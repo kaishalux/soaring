@@ -1,13 +1,10 @@
-import { expect as expectCDK, matchTemplate, MatchStyle } from '@aws-cdk/assert';
+import { SynthUtils } from '@aws-cdk/assert';
 import * as cdk from '@aws-cdk/core';
 import * as Cdk from '../lib/target-stack';
 
-test('Target Stack', () => {
+// Snapshots the state of the stack (if it doesn't match update the tests)
+it('matches the snapshot', () => {
   const app = new cdk.App();
-  // WHEN
   const stack = new Cdk.TargetStack(app, 'MyTestStack');
-  // THEN
-  expectCDK(stack).to(matchTemplate({
-    "Resources": {}
-  }, MatchStyle.EXACT))
+  expect(SynthUtils.toCloudFormation(stack)).toMatchSnapshot();
 });
