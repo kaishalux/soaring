@@ -1,0 +1,32 @@
+{
+    "S3DataEvents": {
+        "detail-type": [
+            "AWS API Call via CloudTrail"
+        ],
+        "source": [
+            "aws.s3"
+        ],
+        "detail": {
+            "sourceIPAddress": [
+                {
+                    "anything-but": [
+                        "cloudtrail.amazonaws.com",
+                        "lambda.amazonaws.com"
+                    ]
+                }
+            ],
+            "eventSource": [
+                "s3.amazonaws.com"
+            ],
+            "eventName": [
+                "ListObjects",
+                "PutObject",
+                "GetObject",
+                "HeadObject",
+                "RestoreObject",
+                "DeleteObject",
+                "DeleteObjects"
+            ]
+        }
+    }
+}
