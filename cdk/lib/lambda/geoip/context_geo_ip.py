@@ -155,23 +155,23 @@ def lambda_handler(event):
     # IP address details
     # ip_details  = detail['policyDetails']['actor']['ipAddressDetails']
     ip_details  = {
-                    "ipAddressV4": "192.0.2.0",
+                    "ipAddressV4": "13.210.232.8",
                     "ipOwner": {
-                        "asn": "-1",
-                        "asnOrg": "ExampleFindingASNOrg",
-                        "isp": "ExampleFindingISP",
-                        "org": "ExampleFindingORG"
+                        "asn": "AS16509",
+                        "asnOrg": "Amazon.com, Inc.",
+                        "isp": "Amazon Technologies Inc.",
+                        "org": "AWS EC2 (ap-southeast-2)"
                     },
                     "ipCountry": {
-                        "code": "US",
-                        "name": "United States"
+                        "code": "AU",
+                        "name": "Australia"
                     },
                     "ipCity": {
-                        "name": "Ashburn"
+                        "name": "Sydney"
                     },
                     "ipGeoLocation": {
-                        "lat": 39.0481,
-                        "lon": -77.4728
+                        "lat": -33.8591,
+                        "lon": 151.2002
                     }
                 }
 
