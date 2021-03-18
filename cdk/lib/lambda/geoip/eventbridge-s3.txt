@@ -1,0 +1,85 @@
+{
+   "version":"0",
+   "id":"034d13e5-83ea-dfe3-a6cd-3472156eb38f",
+   "detail-type":"AWS API Call via CloudTrail",
+   "source":"aws.s3",
+   "account":"659855141795",
+   "time":"2021-03-17T11:42:48Z",
+   "region":"ap-southeast-2",
+   "resources":[
+      
+   ],
+   "detail":{
+      "eventVersion":"1.08",
+      "userIdentity":{
+         "type":"AssumedRole",
+         "principalId":"AROAZTITONOR7G2XYEYOO:TargetStack-CustomS3AutoDeleteObjectsCustomResourc-1TOWVPF4JRG8Q",
+         "arn":"arn:aws:sts::659855141795:assumed-role/TargetStack-CustomS3AutoDeleteObjectsCustomResourc-2LSFLW8U4CTB/TargetStack-CustomS3AutoDeleteObjectsCustomResourc-1TOWVPF4JRG8Q",
+         "accountId":"659855141795",
+         "accessKeyId":"ASIAZTITONORUWATSM43",
+         "sessionContext":{
+            "sessionIssuer":{
+               "type":"Role",
+               "principalId":"AROAZTITONOR7G2XYEYOO",
+               "arn":"arn:aws:iam::659855141795:role/TargetStack-CustomS3AutoDeleteObjectsCustomResourc-2LSFLW8U4CTB",
+               "accountId":"659855141795",
+               "userName":"TargetStack-CustomS3AutoDeleteObjectsCustomResourc-2LSFLW8U4CTB"
+            },
+            "attributes":{
+               "creationDate":"2021-03-17T11:42:42Z",
+               "mfaAuthenticated":"false"
+            }
+         }
+      },
+      "eventTime":"2021-03-17T11:42:48Z",
+      "eventSource":"s3.amazonaws.com",
+      "eventName":"DeleteObjects",
+      "awsRegion":"ap-southeast-2",
+      "sourceIPAddress":"13.210.232.8",
+      "userAgent":"[aws-sdk-nodejs/2.804.0 linux/v12.20.1 exec-env/AWS_Lambda_nodejs12.x promise]",
+      "requestParameters":{
+         "bucketName":"soaring-1-customer-reports",
+         "Host":"soaring-1-customer-reports.s3.ap-southeast-2.amazonaws.com",
+         "delete":""
+      },
+      "responseElements":"None",
+      "additionalEventData":{
+         "SignatureVersion":"SigV4",
+         "CipherSuite":"ECDHE-RSA-AES128-GCM-SHA256",
+         "bytesTransferredIn":0.0,
+         "AuthenticationMethod":"AuthHeader",
+         "x-amz-id-2":"nMO0znNTuFLbUL8cX3z6rWVrdYUG44mnl6+4EIBwfPsIQVpOVP63gngfi9jY8lBjZH3JgPeEa/g=",
+         "bytesTransferredOut":0.0
+      },
+      "requestID":"02SNZRDC2J1AS0PM",
+      "eventID":"ae7810aa-0b0f-43ad-b4e9-493e042909ef",
+      "readOnly":false,
+      "resources":[
+         {
+            "type":"AWS::S3::Object",
+            "ARNPrefix":"arn:aws:s3:::soaring-1-customer-reports/",
+            "tags": [
+                {
+                    "key": "SensitiveDataClassification",
+                    "value": "PII"
+                }
+            ]
+         },
+         {
+            "accountId":"659855141795",
+            "type":"AWS::S3::Bucket",
+            "ARN":"arn:aws:s3:::soaring-1-customer-reports",
+            "tags": [
+                {
+                    "key": "DataSecurityClassification",
+                    "value": "CanaryBucket"
+                }
+            ]
+         }
+      ],
+      "eventType":"AwsApiCall",
+      "managementEvent":false,
+      "recipientAccountId":"659855141795",
+      "eventCategory":"Data"
+   }
+}
