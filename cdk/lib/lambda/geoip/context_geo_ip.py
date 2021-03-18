@@ -1,6 +1,28 @@
 import json
 from datetime import datetime
 
+def get_static_map_url(ip_lat, ip_long):
+
+    with open("api_access.json", "r") as f:
+        api_access = json.load(f)
+    
+    url_prefix      = "https://maps.googleapis.com/maps/api/staticmap?"
+    map_center      = str(ip_lat) + "," + str(ip_long)
+    map_zoom        = 9
+    map_width       = 600
+    map_height      = 400
+    map_scale       = 1
+    key             = api_access['gcp-static-maps']['key']
+    
+    map_url         = url_prefix + "center=" + map_center + "&zoom=" + str(map_zoom) \
+                        + "&size=" + str(map_width) + "x" + str(map_height) \
+                        + "&scale=" + str(map_scale) \
+                        + "&markers=" + map_center \
+                        + "&key=" + key
+
+    return map_url
+
+
 def lambda_handler(event):
     """
     Handles input/output for Lambda - do all logic in separate functions
@@ -8,36 +30,31 @@ def lambda_handler(event):
     ### Soaring Contextual Engine
     ### Geo IP Lookup
 
-
     ## Open CloudTrail event in JSON format
     cloud_event = event
     
-    ## Basic Attributes:
-    ## get event type
-    
+
+    ## Get Basic Event Attributes    
     account_source  = cloud_event['source']
     account_id      = cloud_event['account']
     account_region  = cloud_event['region']
-    
+
     detail          = cloud_event['detail'] 
     event_id        = detail['eventID']
-
-    # policy_actions  = detail['policyDetails']['action']
     action_type     = detail['eventType']
+    # policy_actions  = detail['policyDetails']['action']
     # api_type        = policy_actions['apiCallDetails']['api']
     user_identity   = detail['userIdentity']
     user_type       = user_identity['type']
     user_name       = user_identity['sessionContext']['sessionIssuer']['userName']
     
-    finding_id      = "/".join([account_region, account_id, event_id])          # Id
-    sources         = account_source.split(".")
-    generator_id    = "-".join([sources[0], sources[1], cloud_event['id']])  # GeneratorId
     
-    resources       = detail['resources']
-    resource_list   = []
+
+    ## Get Affected Resources Metadata
+    resources               = detail['resources']
+    resource_list           = []
     resource_list_sensitive = []
-    resource_list_canary = []
-    # resource_list_names = resources.keys()
+    resource_list_canary    = []
 
     for object in resources:
         
@@ -53,7 +70,7 @@ def lambda_handler(event):
             resource_arn = object['ARN']
         
         resource_name = resource_arn.split(":")[-1]
-        rname = " ".join([resource_type, resource_name])
+        rname = resource_type + " '" + resource_name + "'"
 
         resource = {
             "Type": resource_type,
@@ -69,22 +86,26 @@ def lambda_handler(event):
         
         resource_list.append(resource)
 
-    n_resources     = len(resource_list)
-    ## generate description based on event type and contexts
+    
+    
+
+    ## Generate event descriptions based on event type and contexts
     # include info about resources + PII data
     
-    ## first see if there is an AWS::S3::Bucket
-    ## check its tags
-    ## if the tags contain either of [event_types] then set the finding_type accordingly
-    # event_types   = ["SensitiveData-PII", "CanaryBucket"]
-    # finding_types = ["TTPs/Initial Access", "Sensitive Data Identifications/PII"]
+    ## first see if there is an AWS::S3::Bucket and check its tags
+    ## if the tags contain either of event_types, set the finding_type and event_desc accordingly
+    ## event_types   = ["SensitiveData-PII", "CanaryBucket"]
+    ## finding_types = ["TTPs/Initial Access", "Sensitive Data Identifications/PII"]
     
-    descriptions = []
-    finding_types = []
+    n_resources     = len(resource_list)
+    descriptions    = []
+    finding_types   = []
 
-    event_description    = "There was an attempted " + action_type + " on your S3 resources. " + str(n_resources) + " resources are affected."
-    event_desc_sensitive = "Sensitive data containing PII, stored in the resources ['" + "', '".join(resource_list_sensitive) + "'] may have been compromised."
-    event_desc_canary    = "One or more canary buckets ['" + "', '".join(resource_list_canary) + "'] may have been compromised."
+    event_description    = "There was an attempted " + action_type + " on your secure S3 resources. " \
+        + str(n_resources) + " resources are affected."
+    event_desc_sensitive = "Sensitive data containing PII, stored in the resources [" \
+        + ", ".join(resource_list_sensitive) + "] may have been compromised."
+    event_desc_canary    = "One or more canaries [" + ", ".join(resource_list_canary) + "] may have been compromised."
 
     descriptions.append(event_description)
 
@@ -98,12 +119,20 @@ def lambda_handler(event):
     
     description = " ".join(descriptions)
 
+
+
+    ## Add Additional SecurityHub Finding Metadata
     # arn                 = detail['resourcesAffected']['s3Bucket']['arn']
     # bucket_name         = detail['resourcesAffected']['s3Bucket']['name']
-    title_encryption    = "Attempted AWS API Call on S3 resources"
+    title               = "Attempted AWS API Call on S3 resources"
     product_arn         = "arn:aws:securityhub:" + account_region + ":" + account_id + ":" + "product/soaring/v1"
+    finding_id          = "/".join([account_region, account_id, event_id])          # Id
+    sources             = account_source.split(".")
+    generator_id        = "-".join([sources[0], sources[1], cloud_event['id']])  # GeneratorId
     
-    ## !TODO ADD SEVERITY SCORE
+    
+
+    ## Calculate advanced severity score (TODO)
     # severity_score      = detail['severity']['score']
     # severity_desc       = detail['severity']['description']
     severity = {
@@ -113,13 +142,17 @@ def lambda_handler(event):
     severity_score      = severity['score']
     severity_desc       = severity['description']
     
-    ## get date and time from event
-    # event_time  = cloud_event['time']               # FirstObservedAt
-    first_observed_at   = detail['eventTime']       # when the event was first observed (event created at)
-    updated_at          = detail['eventTime']       # when the event was updated
-    created_at          = datetime.utcnow().isoformat() + "Z"   # when THIS finding was created (time now)
+
+
+    ## Get event timestamp
+    ## the three timestamps may be different in the Macie findings
+    first_observed_at   = detail['eventTime']                                   # when the event was first observed (event created at)
+    updated_at          = detail['eventTime']                                   # when the event was updated
+    created_at          = datetime.utcnow().isoformat() + "Z"                   # when THIS finding was created (time now)
     
-    # IP address details 
+
+
+    # IP address details
     # ip_details  = detail['policyDetails']['actor']['ipAddressDetails']
     ip_details  = {
                     "ipAddressV4": "192.0.2.0",
@@ -141,6 +174,7 @@ def lambda_handler(event):
                         "lon": -77.4728
                     }
                 }
+
     ip_address  = ip_details['ipAddressV4']
     ip_country  = ip_details['ipCountry']['name']
     ip_city     = ip_details['ipCity']['name']
@@ -148,48 +182,8 @@ def lambda_handler(event):
     ip_long     = ip_details['ipGeoLocation']['lon']
     
     ## get Google Static Map url
-    with open("api_access.json", "r") as f:
-        api_access = json.load(f)
+    map_url     = get_static_map_url(ip_lat, ip_long)
     
-    url_prefix      = "https://maps.googleapis.com/maps/api/staticmap?"
-    map_center      = str(ip_lat) + "," + str(ip_long)
-    map_zoom        = 9
-    map_width       = 600
-    map_height      = 400
-    map_scale       = 1
-    key             = api_access['gcp-static-maps']['key']
-    
-    map_url         = url_prefix + "center=" + map_center + "&zoom=" + str(map_zoom) \
-                        + "&size=" + str(map_width) + "x" + str(map_height) \
-                        + "&scale=" + str(map_scale) \
-                        + "&markers=" + map_center \
-                        + "&key=" + key
-    
-        
-    ## message output in console
-    ## comment out when deploying to Lambda
-    # print("=== Soaring Alert ===")
-    # print("=====================\n")
-    
-    # print("Finding ID: " + finding_id)
-    # print("Account ID: " + account_id + "\n")
-    
-    # print("There was an attempted " + action_type) 
-    # print("at " + event_time + "\n")
-    
-    # print(str(n_resources) + " resources in your account are affected:")
-    # # print(json.dumps(resource_details, indent=4), "\n")
-    
-    # print("CRITICAL: " + event_desc_sensitive)
-    # print(event_desc_encrypted + "\n")
-    
-    # print("Actor Information:")
-    # print("User/role ID:  " + user_identity['assumedRole']['arn'])
-    # print("Source IP:     " + ip_address)
-    # print("Location:      " + ip_city + ", " + ip_country \
-    #     + " (" + str(ip_lat) + "," + str(ip_long) + ")")
-    # print("Map URL:       " + map_url)
-    # # print("Actors:\n")
     
     
     ## output as json in AWS Security Findings Format
@@ -208,7 +202,7 @@ def lambda_handler(event):
             "Label"         : severity_desc, 
             "Original"      : severity_score
         }, 
-        "Title"             : title_encryption, 
+        "Title"             : title, 
         "UpdatedAt"         : updated_at,
         "FirstObservedAt"   : first_observed_at,
         "Types"             : finding_types,
@@ -224,10 +218,11 @@ def lambda_handler(event):
         }
     }
 
-    # !TODO add the following:
-    # - types
-    # - user identity info (user ID, IP address, map url)
+
+    # TODO: add the following
     # - macie logic
+    # - ip lookup
+    # - advanced severity score
     
     return finding
 
@@ -236,4 +231,4 @@ filename = "eventbridge-s3.txt"
 with open(filename, "r") as f:
     cloud_event = json.load(f)
 
-print(json.dumps(lambda_handler(cloud_event), sort_keys=False, indent=4))w
+print(json.dumps(lambda_handler(cloud_event), sort_keys=False, indent=4))
