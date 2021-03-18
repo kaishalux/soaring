@@ -225,13 +225,15 @@ def lambda_handler(event):
     }
 
     # !TODO add the following:
+    # - types
+    # - user identity info (user ID, IP address, map url)
     # - macie logic
     
     return finding
 
-# ## IMPORTANT - comment out this section when deploying to Lambda
-# filename = "eventbridge-s3.txt"
-# with open(filename, "r") as f:
-#     cloud_event = json.load(f)
+## IMPORTANT - comment out this section when deploying to Lambda
+filename = "eventbridge-s3.txt"
+with open(filename, "r") as f:
+    cloud_event = json.load(f)
 
-# print(json.dumps(lambda_handler(cloud_event), sort_keys=False, indent=4))
+print(json.dumps(lambda_handler(cloud_event), sort_keys=False, indent=4))w
