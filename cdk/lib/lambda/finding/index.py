@@ -23,7 +23,7 @@ def get_static_map_url(ip_lat, ip_long):
     return map_url
 
 
-def lambda_handler(event):
+def lambda_handler(event, _context):
     """
     Handles input/output for Lambda - do all logic in separate functions
     """
