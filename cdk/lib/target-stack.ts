@@ -29,5 +29,7 @@ export class TargetStack extends cdk.Stack {
     });
 
     Tags.of(this).add("OWNER", "team");
+    Tags.of(bucketTargetPii).add("SensitiveDataClassification", "PII");
+    Tags.of(bucketTargetCanary).add("DataSecurityClassification", "CanaryBucket")
   }
 }
