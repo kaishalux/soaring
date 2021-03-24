@@ -11,85 +11,106 @@ exports.handler = async (event, context) => {
 
     const bucket = event.Records[0].s3.bucket.name;
     const key = event.Records[0].s3.object.key;
+
+    const data = await getObject(bucket, key);
+    const log = await getLog(data.Body);
+
+    var result = await groupEventsByUser(log);
+
+    for (var i = 0; i < result.Users.length; i++) {
+        var username = result.Users[i].userIdentity.arn.split("/").pop();
+        result.Users[i].Groups = await getGroups(username);
+    }
+    return result;
+};
+
+const getObject = async (bucket, key) => {
     const params = {
         Bucket: bucket,
         Key: key,
     };
-
     try {
         const data = await s3.getObject(params).promise();
-        return new Promise((resolve, reject) => {
-            try {
-                zlib.gunzip(data.Body, (err, buffer) => {
-                    if (err) return reject(err);
-                    const body = buffer.toString();
-                    // console.log(body);
-                    var json;
-                    try {
-                        json = JSON.parse(body);
-                        console.log(json);
-                    } catch (err) {
-                        return reject(err);
-                    }
-
-                    // const params = {
-                    //     UserName: json.Records[0].userIdentity.userName
-                    // };
-                    // try {
-                    //     iam.listGroupsForUser(params, (err, data) => {
-                    //         if (err) return reject(err);
-                    //         // console.log(data);
-                    //         resolve(data.Groups);
-                    //     });
-                    // } catch (err) {
-                    //     reject(err);
-                    // }
-                    var result = {};
-                    result.Users = [];
-                    var n = 0;
-                    for (var i = 0; i < json.Records.length; i++) {
-                        // Initial user
-                        if (n == 0) {
-                            result.Users.push({
-                                userIdentity: json.Records[i].userIdentity,
-                                // Groups: getGroups(json.Records[i].userIdentity.userName),
-                                Events: []
-                            });
-                            n++;
-                        }
-
-                        for (var j = 0; j < n; j++) {
-                            if (result.Users[j].userIdentity.userName != json.Records[i].userIdentity.userName) {
-                                // New user
-                                result.Users.push({
-                                    userIdentity: json.Records[i].userIdentity,
-                                    Events: [{
-                                        eventTime: json.Records[i].eventTime,
-                                        eventName: json.Records[i].eventName
-                                    }]
-                                });
-                                n++;
-                                break;
-                            } else {
-                                // Append record to existing user
-                                result.Users[j].Events.push({
-                                    eventTime: json.Records[i].eventTime,
-                                    eventName: json.Records[i].eventName
-                                });
-                                break;
-                            }
-                        }
-                    }
-                    resolve(result);
-                });
-            } catch (err) {
-                reject(err);
-            }
-        });
+        return(data);
     } catch (err) {
         console.log(err);
         const message = `Error getting object ${key} from bucket ${bucket}. Make sure they exist and your bucket is in the same region as this function.`;
-        console.log(message);
         throw new Error(message);
     }
+};
+
+const getLog = async (data) => {
+    return new Promise((resolve, reject) => {
+        try {
+            zlib.gunzip(data, (err, buffer) => {
+                if (err) return reject(err);
+                const body = buffer.toString();
+                // console.log(body);
+                var json;
+                try {
+                    json = JSON.parse(body);
+                    // console.log(json);
+                    resolve(json);
+                } catch (err) {
+                    return reject(err);
+                }
+            });
+        } catch (err) {
+            reject(err);
+        }
+    });
+};
+
+const groupEventsByUser = async (data) => {
+    var result = {};
+    result.Users = [];
+    for (var i = 0; i < data.Records.length; i++) {
+        // Initial user
+        if (result.Users.length == 0) {
+            result.Users.push({
+                userIdentity: data.Records[i].userIdentity,
+                Groups: [],
+                Events: []
+            });
+        }
+
+        for (var j = 0; j < result.Users.length; j++) {
+            if (result.Users[j].userIdentity.arn != data.Records[i].userIdentity.arn) {
+                // New user
+                result.Users.push({
+                    userIdentity: data.Records[i].userIdentity,
+                    Events: [{
+                        eventTime: data.Records[i].eventTime,
+                        eventName: data.Records[i].eventName
+                    }]
+                });
+                break;
+            } else {
+                // Append record to existing user
+                result.Users[j].Events.push({
+                    eventTime: data.Records[i].eventTime,
+                    eventName: data.Records[i].eventName
+                });
+                break;
+            }
+        }
+    }
+
+    return result;
+};
+
+const getGroups = async (username) => {
+    var params = { UserName: username };
+    // console.log(params);
+    return new Promise((resolve, reject) => {
+        try {
+            iam.listGroupsForUser(params, (err, data) => {
+                if (err) return reject(err);
+                // console.log(data);
+                resolve(data.Groups);
+            });
+        } catch (err) {
+            reject(err);
+        }
+    });
 };
