@@ -229,4 +229,14 @@ def lambda_handler(event, _context):
     # resources affected --> Public access
     # tags --> SensitiveDataClassification
     
+    # take the job id and go to macie and get the result 
+    # get the macie client 
+    # boto3.getfinding of job ... good luck talia
+
     return finding
+
+    filename = "message.txt"
+    with open(filename, "r") as f:
+        cloud_event = json.load(f)
+
+    print(json.dumps(lambda_handler(cloud_event), sort_keys=False, indent=4))
