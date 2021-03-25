@@ -31,7 +31,7 @@ def lambda_handler(event, _context):
     ### Geo IP Lookup
 
     ## Open CloudTrail event in JSON format
-    cloud_event = event_description
+    cloud_event = event
     
 
     ## Get Basic Event Attributes    
@@ -86,6 +86,7 @@ def lambda_handler(event, _context):
         
         resource_list.append(resource)
 
+    
     
 
     ## Generate event descriptions based on event type and contexts
@@ -229,4 +230,14 @@ def lambda_handler(event, _context):
     # resources affected --> Public access
     # tags --> SensitiveDataClassification
     
+    # take the job id and go to macie and get the result 
+    # get the macie client 
+    # boto3.getfinding of job ... good luck talia
+    
     return finding
+
+filename = "message.txt"
+with open(filename, "r") as f:
+    cloud_event = json.load(f)
+
+print(json.dumps(lambda_handler(cloud_event), sort_keys=False, indent=4))
