@@ -19,8 +19,15 @@ exports.handler = async (event, context) => {
 
     for (var i = 0; i < result.Users.length; i++) {
         var username = result.Users[i].userIdentity.arn.split("/").pop();
+        // result.Users[i].Policies = await getUserPolicies(username);
+
         result.Users[i].Groups = await getGroups(username);
+        result.Users[i].Groups.Policies = [];
+        for (var j = 0; j < result.Users[i].Groups.length; j++) {
+            result.Users[i].Groups[j].Policies = await getGroupPolicies(result.Users[i].Groups[j].GroupName);
+        }
     }
+
     return result;
 };
 
@@ -69,6 +76,7 @@ const groupEventsByUser = async (data) => {
         if (result.Users.length == 0) {
             result.Users.push({
                 userIdentity: data.Records[i].userIdentity,
+                Policies: [],
                 Groups: [],
                 Events: []
             });
@@ -99,8 +107,8 @@ const groupEventsByUser = async (data) => {
     return result;
 };
 
-const getGroups = async (username) => {
-    var params = { UserName: username };
+const getGroups = async (user) => {
+    var params = { UserName: user };
     // console.log(params);
     return new Promise((resolve, reject) => {
         try {
@@ -111,6 +119,48 @@ const getGroups = async (username) => {
             });
         } catch (err) {
             reject(err);
+        }
+    });
+};
+
+const getUserPolicies = async (user) => {
+    var params = { UserName: user };
+    return new Promise((resolve, reject) => {
+        try {
+            iam.listAttachedUserPolicies(params, (err, data) => {
+                if (err) return reject(err);
+                resolve(data.AttachedPolicies);
+            });
+        } catch (err) {
+            reejct(err);
+        }
+    });
+};
+
+const getRolePolicies = async (role) => {
+    var params = { RoleName: role };
+    return new Promise((resolve, reject) => {
+        try {
+            iam.listAttachedRolePolicies(params, (err, data) => {
+                if (err) return reject(err);
+                resolve(data.AttachedPolicies);
+            });
+        } catch (err) {
+            reejct(err);
+        }
+    });
+};
+
+const getGroupPolicies = async (group) => {
+    var params = { GroupName: group };
+    return new Promise((resolve, reject) => {
+        try {
+            iam.listAttachedGroupPolicies(params, (err, data) => {
+                if (err) return reject(err);
+                resolve(data.AttachedPolicies);
+            });
+        } catch (err) {
+            reejct(err);
         }
     });
 };
