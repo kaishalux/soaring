@@ -1,4 +1,5 @@
 ## Soaring Macie Findings Integration
+<<<<<<< HEAD
 ## ingest macie findings and route to context adder
 
 import boto3
@@ -91,3 +92,7 @@ with open(filename, "r") as f:
     cloud_event = json.load(f)
 
 print(json.dumps(lambda_handler(cloud_event), sort_keys=False, indent=4))
+=======
+## ingest macie findings and route to context adder 
+
+>>>>>>> c9a117806eaaf5c13f5b93384da991cfbc5ac42e

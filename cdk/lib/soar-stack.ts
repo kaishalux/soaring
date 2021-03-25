@@ -23,6 +23,13 @@ export class SoarStack extends cdk.Stack {
       handler: "index.lambda_handler",
       memorySize: 512,
     });
+  
+    const macieFinding = new lambda.Function(this, 'MacieLambda', { 
+      code: lambda.Code.fromAsset(path.join(__dirname, "lambda/macie")),
+      runtime: lambda.Runtime.PYTHON_3_8,
+      handler: "index.lambda_handler",
+      memorySize: 512,
+    }); 
 
     const finding = new lambda.Function(this, "FindingLambda", {
       code: lambda.Code.fromAsset(path.join(__dirname, "lambda/finding")),
@@ -35,10 +42,13 @@ export class SoarStack extends cdk.Stack {
     const sfnDefinition = new tasks.LambdaInvoke(this, "IdStep", {
       "lambdaFunction": identityContextAdder,
       "retryOnServiceExceptions": false
+    }).next(new tasks.LambdaInvoke(this, "MacieFindingsStep", {
+      "lambdaFunction": macieFinding,
+      "retryOnServiceExceptions": false
     }).next(new tasks.LambdaInvoke(this, "FindingsStep", {
       "lambdaFunction": finding,
       "retryOnServiceExceptions": false
-    }));
+    })));
 
     // Set up rest of infrastructure
     const stateMachine = new sfn.StateMachine(this, "SoaringSoln", {
