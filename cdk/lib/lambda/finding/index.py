@@ -31,7 +31,7 @@ def lambda_handler(event, _context):
     ### Geo IP Lookup
 
     ## Open CloudTrail event in JSON format
-    cloud_event = event
+    cloud_event = event_description
     
 
     ## Get Basic Event Attributes    
