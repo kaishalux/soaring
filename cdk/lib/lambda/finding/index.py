@@ -87,7 +87,6 @@ def lambda_handler(event, _context):
         resource_list.append(resource)
 
     
-    
 
     ## Generate event descriptions based on event type and contexts
     # include info about resources + PII data
@@ -223,5 +222,11 @@ def lambda_handler(event, _context):
     # - macie logic
     # - ip lookup
     # - advanced severity score
+
+    # macie fields to add: 
+    # severity - macie severity
+    # financial information, personal information
+    # resources affected --> Public access
+    # tags --> SensitiveDataClassification
     
     return finding
