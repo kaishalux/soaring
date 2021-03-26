@@ -1,5 +1,8 @@
+import boto3
 import json
 from datetime import datetime
+
+
 
 def get_static_map_url(ip_lat, ip_long):
 
@@ -31,7 +34,7 @@ def lambda_handler(event, _context):
     ### Geo IP Lookup
 
     ## Open CloudTrail event in JSON format
-    cloud_event = event_description
+    cloud_event = event
     
 
     ## Get Basic Event Attributes    
@@ -86,6 +89,7 @@ def lambda_handler(event, _context):
         
         resource_list.append(resource)
 
+    
     
 
     ## Generate event descriptions based on event type and contexts
@@ -234,15 +238,28 @@ def lambda_handler(event, _context):
     # boto3.getfinding of job ... good luck talia
     
     jobId = cloud_event['macieJobs']['macieJobId']
+    # make connection with macie 
+    macie_client = boto3.client('macie2')
     # jobStatus = cloud_evet['macieJobs']['jobStatus']
     # if (jobStatus == 'COMPLETE') continue 
-    
+
+    macie_finding = macie_client.get_findings(
+    findingIds = [
+        'string', jobId
+    ], sortCriteria = {
+        'attributeName': 'string',
+        'orderBy': 'ASC'|'DESC'
+    })   
+
+    # macie_finding['findings']['result']['sensitiveData']
+
+    macie_tags = macie_client.list_tags_for_resource(resourceArn='string')
 
 
     return finding
 
-    filename = "message.txt"
-    with open(filename, "r") as f:
-        cloud_event = json.load(f)
+filename = "message.txt"
+with open(filename, "r") as f:
+    cloud_event = json.load(f)
 
-    print(json.dumps(lambda_handler(cloud_event), sort_keys=False, indent=4))
+print(json.dumps(lambda_handler(cloud_event), sort_keys=False, indent=4))

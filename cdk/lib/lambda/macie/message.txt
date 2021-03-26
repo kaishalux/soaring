@@ -11,17 +11,17 @@
         "eventVersion": "1.08",
         "userIdentity": {
             "type": "AssumedRole",
-            "principalId": "AROAVRVUATJWVNE6UVQGN:gawdn-rw",
-            "arn": "arn:aws:sts::659855141795:assumed-role/Developers/gawdn-rw",
+            "principalId": "AROAVRVUATJWVNE6UVQGN:Jas",
+            "arn": "arn:aws:sts::659855141795:assumed-role/lambda-soaring-dev/Jas",
             "accountId": "659855141795",
             "accessKeyId": "ASIAVRVUATJWWDXEKJVA",
             "sessionContext": {
                 "sessionIssuer": {
                     "type": "Role",
                     "principalId": "AROAVRVUATJWVNE6UVQGN",
-                    "arn": "arn:aws:iam::659855141795:role/Developers",
+                    "arn": "arn:aws:iam::659855141795:role/lambda-soaring-ev",
                     "accountId": "659855141795",
-                    "userName": "Developers"
+                    "userName": "lambda-soaring-dev"
                 },
                 "attributes": {
                     "creationDate": "2021-03-14T23:27:37Z",
@@ -68,13 +68,5 @@
         "recipientAccountId": "659855141795",
         "vpcEndpointId": "vpce-2df00000",
         "eventCategory": "Data"
-    },
-    "macieJobs": [
-    {
-      "bucketName": "arn:aws:s3:::soaring-1-customer-reports/",
-      "macieJobArn": "arn:aws:macie:::Soaring-S3Scan-datetime",
-      "macieJobId": "jsdaf",
-      "jobStatus": "INCOMPLETE"
     }
-  ]
 }
