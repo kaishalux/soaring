@@ -232,6 +232,12 @@ def lambda_handler(event, _context):
     # take the job id and go to macie and get the result 
     # get the macie client 
     # boto3.getfinding of job ... good luck talia
+    
+    jobId = cloud_event['macieJobs']['macieJobId']
+    # jobStatus = cloud_evet['macieJobs']['jobStatus']
+    # if (jobStatus == 'COMPLETE') continue 
+    
+
 
     return finding
 
