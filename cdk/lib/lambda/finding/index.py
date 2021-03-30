@@ -36,11 +36,43 @@ def lambda_handler(event, _context):
     ## Open CloudTrail event in JSON format
     cloud_event = event
     
+        # TODO: add the following
+    # - macie logic
+    # - ip lookup
+    # - advanced severity score
 
+    # macie fields to add: 
+    # severity - macie severity
+    # financial information, personal information
+    # resources affected --> Public access
+    # tags --> SensitiveDataClassification
+    
+    # take the job id and go to macie and get the result 
+    # get the macie client 
+    # boto3.getfinding of job ... good luck talia
+    
+    jobId = cloud_event['macieJobs']['macieJobId']
+    # make connection with macie 
+    macie_client = boto3.client('macie2')
+    macie_finding = macie_client.get_findings(
+    findingIds = [
+        'string', jobId
+    ], sortCriteria = {
+        'attributeName': 'string',
+        'orderBy': 'ASC'|'DESC'
+    })   
+
+
+    sensitive_data = macie_finding['classificationDetails']['result']['sensitiveData']
+    account_id = macie_finding['accountId']
+    account_region = macie_finding['region']
+
+    
+    title = macie_finding['title']
+    
     ## Get Basic Event Attributes    
     account_source  = cloud_event['source']
-    account_id      = cloud_event['account']
-    account_region  = cloud_event['region']
+    # account_region  = cloud_event['region']
 
     detail          = cloud_event['detail'] 
     event_id        = detail['eventID']
@@ -52,12 +84,16 @@ def lambda_handler(event, _context):
     user_name       = user_identity['sessionContext']['sessionIssuer']['userName']
     
     
-
     ## Get Affected Resources Metadata
-    resources               = detail['resources']
+    resources               = macie_finding['resourcesAffected']
     resource_list           = []
     resource_list_sensitive = []
     resource_list_canary    = []
+
+    bucket_name = macie_finding['resourcesAffected']['s3Bucket']['name']
+    bucket_owner = macie_finding['resourcesAffected']['s3Bucket']['owner']['displayName']
+    # PUBLIC or NOT_PUBLIC
+    permission = macie_finding['resourcesAffected']['publicAccess']['effectivePermission']
 
     for object in resources:
         
@@ -104,8 +140,9 @@ def lambda_handler(event, _context):
     descriptions    = []
     finding_types   = []
 
-    event_description    = "There was an attempted " + action_type + " on your secure S3 resources. " \
-        + str(n_resources) + " resources are affected."
+    # event_description    = "There was an attempted " + action_type + " on your secure S3 resources. " \
+    #     + str(n_resources) + " resources are affected."
+    event_description = macie_finding['description']
     event_desc_sensitive = "Sensitive data containing PII, stored in the resources [" \
         + ", ".join(resource_list_sensitive) + "] may have been compromised."
     event_desc_canary    = "One or more canaries [" + ", ".join(resource_list_canary) + "] may have been compromised."
@@ -123,38 +160,37 @@ def lambda_handler(event, _context):
     description = " ".join(descriptions)
 
 
-
     ## Add Additional SecurityHub Finding Metadata
     # arn                 = detail['resourcesAffected']['s3Bucket']['arn']
     # bucket_name         = detail['resourcesAffected']['s3Bucket']['name']
-    title               = "Attempted AWS API Call on S3 resources"
+    # title               = "Attempted AWS API Call on S3 resources"
+
     product_arn         = "arn:aws:securityhub:" + account_region + ":" + account_id + ":" + "product/soaring/v1"
     finding_id          = "/".join([account_region, account_id, event_id])          # Id
     sources             = account_source.split(".")
     generator_id        = "-".join([sources[0], sources[1], cloud_event['id']])  # GeneratorId
     
-    
 
     ## Calculate advanced severity score (TODO)
     # severity_score      = detail['severity']['score']
     # severity_desc       = detail['severity']['description']
-    severity = {
-            "score": 6,
-            "description": "Medium"
-    }
-    severity_score      = severity['score']
-    severity_desc       = severity['description']
+    # severity = {
+            # "score": 6,
+            # "description": "Medium"
+    # }
+    # severity_score      = severity['score']
+    # severity_desc       = severity['description']
     
-
+    # macie severity score 
+    severity_desc = macie_finding['severity']['description']
+    severity_score = macie_finding['severity']['score']
 
     ## Get event timestamp
     ## the three timestamps may be different in the Macie findings
-    first_observed_at   = detail['eventTime']                                   # when the event was first observed (event created at)
-    updated_at          = detail['eventTime']                                   # when the event was updated
-    created_at          = datetime.utcnow().isoformat() + "Z"                   # when THIS finding was created (time now)
-    
-
-
+    # first_observed_at   = detail['eventTime']                                   # when the event was first observed (event created at)
+    updated_at          = macie_finding['updatedAt']                                   # when the event was updated
+    # created_at          = datetime.utcnow().isoformat() + "Z"                   # when THIS finding was created (time now)
+    created_at = macie_finding['createdAt']
     # IP address details
     # ip_details  = detail['policyDetails']['actor']['ipAddressDetails']
     ip_details  = {
@@ -220,43 +256,8 @@ def lambda_handler(event, _context):
             }
         }
     }
+return finding
 
-
-    # TODO: add the following
-    # - macie logic
-    # - ip lookup
-    # - advanced severity score
-
-    # macie fields to add: 
-    # severity - macie severity
-    # financial information, personal information
-    # resources affected --> Public access
-    # tags --> SensitiveDataClassification
-    
-    # take the job id and go to macie and get the result 
-    # get the macie client 
-    # boto3.getfinding of job ... good luck talia
-    
-    jobId = cloud_event['macieJobs']['macieJobId']
-    # make connection with macie 
-    macie_client = boto3.client('macie2')
-    # jobStatus = cloud_evet['macieJobs']['jobStatus']
-    # if (jobStatus == 'COMPLETE') continue 
-
-    macie_finding = macie_client.get_findings(
-    findingIds = [
-        'string', jobId
-    ], sortCriteria = {
-        'attributeName': 'string',
-        'orderBy': 'ASC'|'DESC'
-    })   
-
-    # macie_finding['findings']['result']['sensitiveData']
-
-    macie_tags = macie_client.list_tags_for_resource(resourceArn='string')
-
-
-    return finding
 
 filename = "message.txt"
 with open(filename, "r") as f:
