@@ -3,10 +3,10 @@
 
 import boto3
 import datetime
-import json
+# import json
 
 
-def lambda_handler(event):
+def lambda_handler(event, _context):
     
     # make a connection to Amazon Macie
     macie_client = boto3.client('macie2')
@@ -27,22 +27,7 @@ def lambda_handler(event):
                 'bucketDefinitions': [{
                     'accountId': acct_id, 
                     'buckets': [scan_bucket_name]
-                }],
-                'scoping': {
-                    'includes': {
-                        'and': [{
-                            'tagScopeTerm': {
-                                'comparator': 'EQ',
-                                'key': 'TAG',
-                                'tagValues': [{
-                                        'key': 'WorkflowId',
-                                        'value': event_id 
-                                }],
-                                'target': 'S3_OBJECT'
-                            }
-                        }]
-                    }
-                }
+                }]
             }
         )
     except Exception as e:
@@ -58,16 +43,21 @@ def lambda_handler(event):
         "jobStatus":    "INCOMPLETE"
     }
     
-    event['macieJobs'].append(macie_job)
+    
+    event['macieJobs'] = [macie_job]
 
     return event
 
 
 
 ## IMPORTANT - comment out this section when deploying to Lambda
-filename = "message.txt"
-with open(filename, "r") as f:
-    cloud_event = json.load(f)
+# filename = "message.txt"
+# with open(filename, "r") as f:
+#     cloud_event = json.load(f)
 
-lambda_result = lambda_handler(cloud_event)
-print( json.dumps(lambda_result, sort_keys=False, indent=4) )
+# lambda_context = {
+#     "function_name": "lambda_macie"
+# }
+
+# lambda_result = lambda_handler(cloud_event, lambda_context)
+# print( json.dumps(lambda_result, sort_keys=False, indent=4) )
