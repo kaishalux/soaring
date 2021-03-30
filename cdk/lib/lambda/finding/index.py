@@ -57,7 +57,7 @@ def lambda_handler(event, _context):
     job_arn = classification_details['jobArn']
     job_id = classification_details['jobId']
 
-    ## Get Basic Event Attributes    
+    ## Get Basic Event Attributes    - double check that this is in message.txt
     account_source  = cloud_event['source']
     detail          = cloud_event['detail'] 
     event_id        = detail['eventID']
@@ -65,6 +65,8 @@ def lambda_handler(event, _context):
     user_identity   = detail['userIdentity']
     user_type       = user_identity['type']
     user_name       = user_identity['sessionContext']['sessionIssuer']['userName']
+    
+    # initialise lists
     detections_list = [] 
     cells_list      = [] 
 
@@ -107,6 +109,7 @@ def lambda_handler(event, _context):
                 "occurrences" : occurrences_list, 
                 "type" : detection_type
             }
+
             detections_list.append(detections)
 
         sensitive_data_list.append(sensitive_data)
@@ -119,20 +122,42 @@ def lambda_handler(event, _context):
     tag_list           = []
     # resource_list_sensitive = []
     # resource_list_canary    = []
+    bucket_info = macie_finding['resourcesAffected']['s3Bucket']
+    bucket_name = bucket_info['name']
+    bucket_owner = bucket_info['owner']['displayName']
+    
+    bucket_object = bucket_info['s3Object']
+    bucket_arn = bucket_object['bucketArn']
+    bucket_etag = bucket_object['eTag']
+    bucket_key = bucket['key']
 
-    bucket_name = macie_finding['resourcesAffected']['s3Bucket']['name']
-    bucket_owner = macie_finding['resourcesAffected']['s3Bucket']['owner']['displayName']
+    s3Object = { 
+        "bucketArn" : bucket_arn,
+        "eTag" : bucket_etag, 
+        "key" : bucket_key
+    }
+    
     # PUBLIC or NOT_PUBLIC
     permission = macie_finding['resourcesAffected']['publicAccess']['effectivePermission']
-
+    resource_list_sensitive = [] 
+    resource_list_canary = [] 
     for obj in tags:
-        key = tags['key']
-        value = tags['TargetStack']
+        key = obj['key']
+        value = obj['TargetStack']
         tag = { 
             "key": key, 
             "value": value
         }
         tag_list.append(tag)
+
+        # 
+        if (tag['key'] == "SensitiveDataClassification" and tag['value'] == "PII"):
+            resource_list_sensitive.append(rname)
+        if (tag['key'] == "DataSecurityClassification" and tag['value'] == "CanaryBucket"):
+            resource_list_canary.append(rname)
+        
+
+        # resource_list.append(resource)
 
     #description from macie finding 
     event_description = macie_finding['description']
@@ -141,33 +166,8 @@ def lambda_handler(event, _context):
     severity_desc = macie_finding['severity']['description']
     severity_score = macie_finding['severity']['score']
 
-    # TODO: WHY DO WE NEED THIS -CAN I  DELETE
-        #  if (object_type == "AWS::S3::Object"):
-        #      resource_type = "S3 Object"
-        #      resource_arn = object['ARNPrefix']
 
-        #  if (object_type == "AWS::S3::Bucket"):
-        #      resource_type = "S3 Bucket"
-        #      resource_arn = object['ARN']
-        
-        #  resource_name = resource_arn.split(":")[-1]
-        #  rname = resource_type + " '" + resource_name + "'"
-
-    #    resource = {
-    #         "Type": resource_type,
-    #         "Id": resource_arn,
-    #         "Name": resource_name
-    #     }
-        
-    #     for tag in object_tags:
-    #         if (tag['key'] == "SensitiveDataClassification" and tag['value'] == "PII"):
-    #             resource_list_sensitive.append(rname)
-    #         if (tag['key'] == "DataSecurityClassification" and tag['value'] == "CanaryBucket"):
-    #             resource_list_canary.append(rname)
-        
-    #     resource_list.append(resource)
-
-
+    # TODO: ADD LOGIC FOR BOTH USE CASES
     ## Generate event descriptions based on event type and contexts
     # include info about resources + PII data
     
@@ -199,36 +199,22 @@ def lambda_handler(event, _context):
     
     # description = " ".join(descriptions)
 
-
+    # TODO: GET ARN OF BUCKET ITSELF
+    macie_finding['resourcesAffected']
     ## Add Additional SecurityHub Finding Metadata
     # arn                 = detail['resourcesAffected']['s3Bucket']['arn']
-    # bucket_name         = detail['resourcesAffected']['s3Bucket']['name']
-    # title               = "Attempted AWS API Call on S3 resources"
 
-    # TODO: DO WE NEED THIS OR SHOULD I GET IT FROM MACIE? 
     product_arn         = "arn:aws:securityhub:" + account_region + ":" + account_id + ":" + "product/soaring/v1"
     finding_id          = "/".join([account_region, account_id, event_id])          # Id
     sources             = account_source.split(".")
     generator_id        = "-".join([sources[0], sources[1], cloud_event['id']])     # GeneratorId
     
-
-    ## Calculate advanced severity score (TODO) - do we need this can i delete ? 
-    # severity_score      = detail['severity']['score']
-    # severity_desc       = detail['severity']['description']
-    # severity = {
-            # "score": 6,
-            # "description": "Medium"
-    # }
-    # severity_score      = severity['score']
-    # severity_desc       = severity['description']
-    
-
     ## Get event timestamp
     ## the three timestamps may be different in the Macie findings
-    # first_observed_at   = detail['eventTime']                                   # when the event was first observed (event created at)
-    updated_at          = macie_finding['updatedAt']                                   # when the event was updated
-    # created_at          = datetime.utcnow().isoformat() + "Z"                   # when THIS finding was created (time now)
-    created_at = macie_finding['createdAt']
+    # first_observed_at   = detail['eventTime']                                     # when the event was first observed (event created at)
+    updated_at          = macie_finding['updatedAt']                                # when the event was updated
+    created_at          = datetime.utcnow().isoformat() + "Z"                       # when THIS finding was created (time now)
+
     # IP address details
     # ip_details  = detail['policyDetails']['actor']['ipAddressDetails']
     ip_details  = {
@@ -263,6 +249,7 @@ def lambda_handler(event, _context):
     
     ## output as json in AWS Security Findings Format
     ## Accountid, timestamp (CreatedAt and FirstObservedAt), description, resources (resourceID, resourceType), severity, title and types
+    
     finding = {
         "CreatedAt"         : created_at,
         "Description"       : event_description,
@@ -273,8 +260,13 @@ def lambda_handler(event, _context):
         "AwsAccountId"      : account_id,
         "Region"            : account_region,
         "sensitiveData"     : sensitive_data_list, 
-        "size"              : size, 
-        "Tags"              : tag_list,
+        "BucketInfo" : { 
+            "name"          : bucket_name, 
+            "s3object"      : s3Object, 
+            "permission"    : permission
+            "size"              : size, 
+            "Tags"              : tag_list,
+        }
         "Severity"  : {
             "Label"         : severity_desc, 
             "Original"      : severity_score
@@ -290,7 +282,8 @@ def lambda_handler(event, _context):
                 "userIP"        : ip_address,
                 "userCity"      : ip_city,
                 "userCountry"   : ip_country,
-                "userMap"       : map_url
+                "userMap"       : map_url,
+                "permission"    : permission    # this isnt permission for user, it is permision for bucket
             }
         }
     }
