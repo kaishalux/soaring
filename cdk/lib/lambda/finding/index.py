@@ -1,227 +1,103 @@
+import boto3
 import json
-from datetime import datetime
+import os
+import datetime
+import logging
 
-def get_static_map_url(ip_lat, ip_long):
-
-    with open("api_access.json", "r") as f:
-        api_access = json.load(f)
-    
-    url_prefix      = "https://maps.googleapis.com/maps/api/staticmap?"
-    map_center      = str(ip_lat) + "," + str(ip_long)
-    map_zoom        = 9
-    map_width       = 600
-    map_height      = 400
-    map_scale       = 1
-    key             = api_access['gcp-static-maps']['key']
-    
-    map_url         = url_prefix + "center=" + map_center + "&zoom=" + str(map_zoom) \
-                        + "&size=" + str(map_width) + "x" + str(map_height) \
-                        + "&scale=" + str(map_scale) \
-                        + "&markers=" + map_center \
-                        + "&key=" + key
-
-    return map_url
+from base64 import b64decode
+from urllib.request import Request, urlopen
+from urllib.error import URLError, HTTPError
 
 
-def lambda_handler(event, _context):
-    """
-    Handles input/output for Lambda - do all logic in separate functions
-    """
-    ### Soaring Contextual Engine
-    ### Geo IP Lookup
+# The base-64 encoded, encrypted key (CiphertextBlob) stored in the kmsEncryptedHookUrl environment variable
+ENCRYPTED_HOOK_URL = "hooks.slack.com/services/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" #os.environ['kmsEncryptedHookUrl']
+# The Slack channel to send a message to stored in the slackChannel environment variable
+SLACK_CHANNEL = "9447 sec-alert" #os.environ['slackChannel']
 
-    ## Open CloudTrail event in JSON format
-    cloud_event = event
-    
+""" Have to get KMS key permissions first
+HOOK_URL = "https://" + boto3.client('kms').decrypt(
+    CiphertextBlob=b64decode(ENCRYPTED_HOOK_URL),
+    EncryptionContext={'LambdaFunctionName': os.environ['AWS_LAMBDA_FUNCTION_NAME']}
+)['Plaintext'].decode('utf-8')
+"""
+# for now store hook unencrypted
+HOOK_URL = "https://" + ENCRYPTED_HOOK_URL
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
-    ## Get Basic Event Attributes    
-    account_source  = cloud_event['source']
-    account_id      = cloud_event['account']
-    account_region  = cloud_event['region']
+sechub = boto3.client('securityhub')
 
-    detail          = cloud_event['detail'] 
-    event_id        = detail['eventID']
-    action_type     = detail['eventType']
-    # policy_actions  = detail['policyDetails']['action']
-    # api_type        = policy_actions['apiCallDetails']['api']
-    user_identity   = detail['userIdentity']
-    user_type       = user_identity['type']
-    user_name       = user_identity['sessionContext']['sessionIssuer']['userName']
-    
-    
+def lambda_handler(event, context):
+    finding = makeSecurityHubFinding(event.copy())
+    response = sechub.batch_import_findings(Findings = [finding])
+    finding['ProductFields'] = event['Note']
+    sendSlack(finding)
+    return 
 
-    ## Get Affected Resources Metadata
-    resources               = detail['resources']
-    resource_list           = []
-    resource_list_sensitive = []
-    resource_list_canary    = []
-
-    for object in resources:
-        
-        object_type = object['type']
-        object_tags = object['tags']
-
-        if (object_type == "AWS::S3::Object"):
-            resource_type = "S3 Object"
-            resource_arn = object['ARNPrefix']
-
-        if (object_type == "AWS::S3::Bucket"):
-            resource_type = "S3 Bucket"
-            resource_arn = object['ARN']
-        
-        resource_name = resource_arn.split(":")[-1]
-        rname = resource_type + " '" + resource_name + "'"
-
-        resource = {
-            "Type": resource_type,
-            "Id": resource_arn,
-            "Name": resource_name
+def makeSecurityHubFinding(event):
+    event['GeneratorId'] = "soaring"
+    event['ProductArn'] = "arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default"
+    event['Region'] = ""
+    del event['Region']
+    event['Severity']['Original'] = str(event['Severity']['Original']) 
+    event['Severity']['Label'] = event['Severity']['Label'].upper()
+    event['UpdatedAt'] = datetime.datetime.now().isoformat() + "Z"
+    event['Id'] = event['Id'] + " " + event['UpdatedAt']
+    i = 0
+    while i < len(event['Resources']):
+        #have this make and then delete a key to stop me from deleting a key that doesnt exist
+        event['Resources'][i]['Name'] = ""
+        del event['Resources'][i]['Name']
+        i = i + 1
+    event['ProductFields'] = { 
+            "UserIdentity": json.dumps(event['Note']['UserIdentity']),
+            "ProviderName": "soaring", 
+            "ProviderVersion": "0.1"
         }
-        
-        for tag in object_tags:
-            if (tag['key'] == "SensitiveDataClassification" and tag['value'] == "PII"):
-                resource_list_sensitive.append(rname)
-            if (tag['key'] == "DataSecurityClassification" and tag['value'] == "CanaryBucket"):
-                resource_list_canary.append(rname)
-        
-        resource_list.append(resource)
-
-    
-    
-
-    ## Generate event descriptions based on event type and contexts
-    # include info about resources + PII data
-    
-    ## first see if there is an AWS::S3::Bucket and check its tags
-    ## if the tags contain either of event_types, set the finding_type and event_desc accordingly
-    ## event_types   = ["SensitiveData-PII", "CanaryBucket"]
-    ## finding_types = ["TTPs/Initial Access", "Sensitive Data Identifications/PII"]
-    
-    n_resources     = len(resource_list)
-    descriptions    = []
-    finding_types   = []
-
-    event_description    = "There was an attempted " + action_type + " on your secure S3 resources. " \
-        + str(n_resources) + " resources are affected."
-    event_desc_sensitive = "Sensitive data containing PII, stored in the resources [" \
-        + ", ".join(resource_list_sensitive) + "] may have been compromised."
-    event_desc_canary    = "One or more canaries [" + ", ".join(resource_list_canary) + "] may have been compromised."
-
-    descriptions.append(event_description)
-
-    if (len(resource_list_sensitive) > 0):
-        descriptions.append(event_desc_sensitive)
-        finding_types.append("Sensitive Data Identifications/PII")
-
-    if (len(resource_list_canary) > 0):
-        descriptions.append(event_desc_canary)
-        finding_types.append("TTPs/Initial Access")
-    
-    description = " ".join(descriptions)
-
-
-
-    ## Add Additional SecurityHub Finding Metadata
-    # arn                 = detail['resourcesAffected']['s3Bucket']['arn']
-    # bucket_name         = detail['resourcesAffected']['s3Bucket']['name']
-    title               = "Attempted AWS API Call on S3 resources"
-    product_arn         = "arn:aws:securityhub:" + account_region + ":" + account_id + ":" + "product/soaring/v1"
-    finding_id          = "/".join([account_region, account_id, event_id])          # Id
-    sources             = account_source.split(".")
-    generator_id        = "-".join([sources[0], sources[1], cloud_event['id']])  # GeneratorId
-    
-    
-
-    ## Calculate advanced severity score (TODO)
-    # severity_score      = detail['severity']['score']
-    # severity_desc       = detail['severity']['description']
-    severity = {
-            "score": 6,
-            "description": "Medium"
+    event['Note'] = ""
+    del event['Note']
+    return event
+     
+def sendSlack(event):
+    user = event['ProductFields']['UserIdentity'].copy() 
+    text = "%s \n\n*User:* %s \n*User Type:* %s \n*IP:* %s \n*Location:* <%s|%s, %s>" % (event['Description'], 
+            user['userName'], user['userType'], user['userIP'], user['userMap'], user['userCity'], user['userCountry'])
+    slack_message = {
+        'channel': SLACK_CHANNEL,
+        'text': text,
+    	"blocks": [
+    		{
+    			"type": "header",
+    			"text": {
+    				"type": "plain_text",
+    				"text": event['Title'] + " ["+event['Severity']['Label']+"]",
+    			}
+    		},
+    		{
+    			"type": "section",
+    			"text": {
+    				"type": "mrkdwn",
+    				"text": text
+    			}
+    		},
+    		{
+    			"type": "image",
+    			"title": {
+    				"type": "plain_text",
+    				"text": "%s, %s" % (user['userCity'], user['userCountry']),
+    			},
+    			"image_url": user['userMap'],
+    			"alt_text": "IP location"
+    		}
+    	]
     }
-    severity_score      = severity['score']
-    severity_desc       = severity['description']
-    
-
-
-    ## Get event timestamp
-    ## the three timestamps may be different in the Macie findings
-    first_observed_at   = detail['eventTime']                                   # when the event was first observed (event created at)
-    updated_at          = detail['eventTime']                                   # when the event was updated
-    created_at          = datetime.utcnow().isoformat() + "Z"                   # when THIS finding was created (time now)
-    
-
-
-    # IP address details
-    # ip_details  = detail['policyDetails']['actor']['ipAddressDetails']
-    ip_details  = {
-                    "ipAddressV4": "13.210.232.8",
-                    "ipOwner": {
-                        "asn": "AS16509",
-                        "asnOrg": "Amazon.com, Inc.",
-                        "isp": "Amazon Technologies Inc.",
-                        "org": "AWS EC2 (ap-southeast-2)"
-                    },
-                    "ipCountry": {
-                        "code": "AU",
-                        "name": "Australia"
-                    },
-                    "ipCity": {
-                        "name": "Sydney"
-                    },
-                    "ipGeoLocation": {
-                        "lat": -33.8591,
-                        "lon": 151.2002
-                    }
-                }
-
-    ip_address  = ip_details['ipAddressV4']
-    ip_country  = ip_details['ipCountry']['name']
-    ip_city     = ip_details['ipCity']['name']
-    ip_lat      = ip_details['ipGeoLocation']['lat']
-    ip_long     = ip_details['ipGeoLocation']['lon']
-    
-    ## get Google Static Map url
-    map_url     = get_static_map_url(ip_lat, ip_long)
-    
-    
-    
-    ## output as json in AWS Security Findings Format
-    ## Accountid, timestamp (CreatedAt and FirstObservedAt), description, resources (resourceID, resourceType), severity, title and types
-    finding = {
-        "CreatedAt"         : created_at,
-        "Description"       : description,
-        "GeneratorId"       : generator_id,
-        "Id"                : finding_id, 
-        "ProductArn"        : product_arn,  
-        "SchemaVersion"     : "2018-10-08", 
-        "AwsAccountId"      : account_id,
-        "Region"            : account_region,
-        "Resources"         : resource_list,
-        "Severity"  : {
-            "Label"         : severity_desc, 
-            "Original"      : severity_score
-        }, 
-        "Title"             : title, 
-        "UpdatedAt"         : updated_at,
-        "FirstObservedAt"   : first_observed_at,
-        "Types"             : finding_types,
-        "Note": {
-            "UserIdentity" : {
-                "userName"      : user_name,
-                "userType"      : user_type,
-                "userIP"        : ip_address,
-                "userCity"      : ip_city,
-                "userCountry"   : ip_country,
-                "userMap"       : map_url
-            }
-        }
-    }
-
-
-    # TODO: add the following
-    # - macie logic
-    # - ip lookup
-    # - advanced severity score
-    
-    return finding
+    req = Request(HOOK_URL, json.dumps(slack_message).encode('utf-8'))
+    try:
+        response = urlopen(req)
+        response.read()
+        logger.info("Message posted to %s", slack_message['channel'])
+    except HTTPError as e:
+        logger.error("Request failed: %d %s", e.code, e.reason)
+    except URLError as e:
+        logger.error("Server connection failed: %s", e.reason)
+    return
