@@ -118,7 +118,10 @@ def lambda_handler(event, _context):
     
     
     # ## Get Affected Resources Metadata
-
+    tags               = macie_finding['resourcesAffected']['tags']
+    tag_list           = []
+    # resource_list_sensitive = []
+    # resource_list_canary    = []
     bucket_info = macie_finding['resourcesAffected']['s3Bucket']
     bucket_name = bucket_info['name']
     bucket_owner = bucket_info['owner']['displayName']
@@ -136,28 +139,25 @@ def lambda_handler(event, _context):
     
     # PUBLIC or NOT_PUBLIC
     permission = macie_finding['resourcesAffected']['publicAccess']['effectivePermission']
-    resource_list = [] 
     resource_list_sensitive = [] 
     resource_list_canary = [] 
-    
+    for obj in tags:
+        key = obj['key']
+        value = obj['TargetStack']
+        tag = { 
+            "key": key, 
+            "value": value
+        }
+        tag_list.append(tag)
 
-    for obj in macie_finding['resourcesAffected']: 
-        tags = obj['tags']
-        for t in tags:
-            key = t['key']
-            value = t['TargetStack']
-            
-            tag = { 
-                "key": key, 
-                "value": value
-            }
+        # 
+        if (tag['key'] == "SensitiveDataClassification" and tag['value'] == "PII"):
+            resource_list_sensitive.append(rname)
+        if (tag['key'] == "DataSecurityClassification" and tag['value'] == "CanaryBucket"):
+            resource_list_canary.append(rname)
+        
 
-            if (tag['key'] == "SensitiveDataClassification" and tag['value'] == "PII"):
-                resource_list_sensitive.append(rname)
-            if (tag['key'] == "DataSecurityClassification" and tag['value'] == "CanaryBucket"):
-                resource_list_canary.append(rname)
-            
-            resource_list.append(resource)
+        # resource_list.append(resource)
 
     #description from macie finding 
     event_description = macie_finding['description']
@@ -173,38 +173,36 @@ def lambda_handler(event, _context):
     
     ## first see if there is an AWS::S3::Bucket and check its tags
     ## if the tags contain either of event_types, set the finding_type and event_desc accordingly
-    # event_types   = ["SensitiveData-PII", "CanaryBucket"]
-    # finding_types = ["TTPs/Initial Access", "Sensitive Data Identifications/PII"]
+    ## event_types   = ["SensitiveData-PII", "CanaryBucket"]
+    ## finding_types = ["TTPs/Initial Access", "Sensitive Data Identifications/PII"]
 
-    n_resources     = len(resource_list)
-    descriptions    = []
-    finding_types   = []
+    # n_resources     = len(resource_list)
+    # descriptions    = []
+    # finding_types   = []
 
-    event_description    = "There was an attempted " + action_type + " on your secure S3 resources. " \
-        + str(n_resources) + " resources are affected."
+    # event_description    = "There was an attempted " + action_type + " on your secure S3 resources. " \
+    #     + str(n_resources) + " resources are affected."
     
-    event_desc_sensitive = "Sensitive data containing PII, stored in the resources [" \
-        + ", ".join(resource_list_sensitive) + "] may have been compromised."
-    event_desc_canary    = "One or more canaries [" + ", ".join(resource_list_canary) + "] may have been compromised."
+    # event_desc_sensitive = "Sensitive data containing PII, stored in the resources [" \
+    #     + ", ".join(resource_list_sensitive) + "] may have been compromised."
+    # event_desc_canary    = "One or more canaries [" + ", ".join(resource_list_canary) + "] may have been compromised."
 
-    descriptions.append(event_description)
+    # descriptions.append(event_description)
 
-    if (len(resource_list_sensitive) > 0):
-        descriptions.append(event_desc_sensitive)
-        finding_types.append("Sensitive Data Identifications/PII")
+    # if (len(resource_list_sensitive) > 0):
+    #     descriptions.append(event_desc_sensitive)
+    #     finding_types.append("Sensitive Data Identifications/PII")
 
-    if (len(resource_list_canary) > 0):
-        descriptions.append(event_desc_canary)
-        finding_types.append("TTPs/Initial Access")
+    # if (len(resource_list_canary) > 0):
+    #     descriptions.append(event_desc_canary)
+    #     finding_types.append("TTPs/Initial Access")
     
-    description = " ".join(descriptions)
+    # description = " ".join(descriptions)
 
     # TODO: GET ARN OF BUCKET ITSELF
-
-    job_arn = macie_findning['classificationDetails']['jobArn']
-
+    macie_finding['resourcesAffected']
     ## Add Additional SecurityHub Finding Metadata
-    # arn              = detail['resourcesAffected']['s3Bucket']['arn']
+    # arn                 = detail['resourcesAffected']['s3Bucket']['arn']
 
     product_arn         = "arn:aws:securityhub:" + account_region + ":" + account_id + ":" + "product/soaring/v1"
     finding_id          = "/".join([account_region, account_id, event_id])          # Id
@@ -264,13 +262,11 @@ def lambda_handler(event, _context):
         "sensitiveData"     : sensitive_data_list, 
         "BucketInfo" : { 
             "name"          : bucket_name, 
-            "arn"           : bucket_arn,
             "s3object"      : s3Object, 
             "permission"    : permission
-            "size"          : size, 
-            "permission"    : permission   
-
-        },
+            "size"              : size, 
+            "Tags"              : tag_list,
+        }
         "Severity"  : {
             "Label"         : severity_desc, 
             "Original"      : severity_score
@@ -286,7 +282,8 @@ def lambda_handler(event, _context):
                 "userIP"        : ip_address,
                 "userCity"      : ip_city,
                 "userCountry"   : ip_country,
-                "userMap"       : map_url
+                "userMap"       : map_url,
+                "permission"    : permission    # this isnt permission for user, it is permision for bucket
             }
         }
     }
