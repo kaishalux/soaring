@@ -33,17 +33,16 @@ def lambda_handler(event, _context):
 
     ## Open CloudTrail event in JSON format
     cloud_event = event
-    jobId = cloud_event['macieJobs']['macieJobId']
+    job_id = cloud_event['macieJobs'][-1]['macieJobId']
     
+    print("Looking for Macie finding " + job_id)
+
     # make connection with macie 
     macie_client = boto3.client('macie2')
     macie_finding = macie_client.get_findings(
     findingIds = [
-        'string', jobId
-    ], sortCriteria = {
-        'attributeName': 'string',
-        'orderBy': 'ASC'|'DESC'
-    })   
+        job_id
+    ])
 
     # get account information from macie finding
     account_id = macie_finding['accountId']
@@ -66,99 +65,107 @@ def lambda_handler(event, _context):
     
     # initialise lists
     detections_list = [] 
-    cells_list      = [] 
-
-    # policy_actions  = detail['policyDetails']['action']
-    # api_type        = policy_actions['apiCallDetails']['api']
+    cells_list      = []
 
     # get sensitive data from macie finding
     
     sensitive_data = macie_finding['classificationDetails']['result']['sensitiveData']
     sensitive_data_list = []
 
-    for obj in sensitive_data: 
-        object_category = obj['category']
-        object_detections = obj['detections']
-        sensitive_data = {
-            "category": object_category,
-            "detections": object_detections
-        }
-        for detections in object_detections: 
-            count = detections['count']
-            occurrences = detections['occurrences']
+    # for obj in sensitive_data: 
+    #     object_category = obj['category']
+    #     object_detections = obj['detections']
+    #     sensitive_data = {
+    #         "category": object_category,
+    #         "detections": object_detections
+    #     }
 
-            for cells in occurrences: 
-                cell_reference = occurences['cellReference']
-                column = occurrences['column']
-                column_name = occurrences['columnName']
-                row = occurrences['row']
-                cells = { 
-                    "cellReference": cell_reference, 
-                    "column": column, 
-                    "columnName": column_name, 
-                    "row": row
-                }
-                cells_list.append(cells)
+        
+    #     for detections in object_detections: 
+    #         count = detections['count']
+    #         occurrences = detections['occurrences']
+
+    #         for cells in occurrences: 
+    #             cell_reference = occurrences['cellReference']
+    #             column = occurrences['column']
+    #             column_name = occurrences['columnName']
+    #             row = occurrences['row']
+    #             cells = { 
+    #                 "cellReference": cell_reference, 
+    #                 "column": column, 
+    #                 "columnName": column_name, 
+    #                 "row": row
+    #             }
+    #             cells_list.append(cells)
             
-            detection_type = detections['type']
+    #         detection_type = detections['type']
 
-            detections = { 
-                "count" : count, 
-                "occurrences" : occurrences_list, 
-                "type" : detection_type
-            }
+    #         detections = { 
+    #             "count" : count, 
+    #             "occurrences" : occurrences_list, 
+    #             "type" : detection_type
+    #         }
 
-            detections_list.append(detections)
+    #         detections_list.append(detections)
 
-        sensitive_data_list.append(sensitive_data)
+    #     sensitive_data_list.append(sensitive_data)
     
-    size = macie_finding['sizeClassified']
+    # size = macie_finding['sizeClassified']
     
     
     # ## Get Affected Resources Metadata
     data_classification = macie_finding['classificationDetails']['result']
+
     bucket_info = macie_finding['resourcesAffected']['s3Bucket']
     bucket_name = bucket_info['name']
     bucket_owner = bucket_info['owner']['displayName']
+    bucket_arn = bucket_info['arn']
     
-    bucket_object = bucket_info['s3Object']
-    bucket_arn = bucket_object['bucketArn']
-    bucket_etag = bucket_object['eTag']
-    bucket_key = bucket['key']
+    bucket_object = macie_finding['resourcesAffected']['s3Object']
+    object_etag = bucket_object['eTag']
+    object_key = bucket_object['key']
 
     s3Object = { 
         "bucketArn" : bucket_arn,
-        "eTag" : bucket_etag, 
-        "key" : bucket_key
+        "eTag" : object_etag, 
+        "key" : object_key
     }
     
-    # PUBLIC or NOT_PUBLIC
-    permission = macie_finding['resourcesAffected']['publicAccess']['effectivePermission']
+    
     resource_list = [] 
     resource_list_sensitive = [] 
     resource_list_canary = [] 
     
 
-    for obj in macie_finding['resourcesAffected']: 
-        tags = obj['tags']
-        for t in tags:
-            key = t['key']
-            value = t['TargetStack']
-            
-            tag = { 
-                "key": key, 
-                "value": value
-            }
+    for obj_key, obj_value in macie_finding['resourcesAffected']: 
+        
+        tags = obj_value['tags']
 
-            if (tag['key'] == "SensitiveDataClassification" and tag['value'] == "PII"):
-                resource_list_sensitive.append(rname)
-            if (tag['key'] == "DataSecurityClassification" and tag['value'] == "CanaryBucket"):
-                resource_list_canary.append(rname)
-            
-            resource_list.append(resource)
+        # PUBLIC or NOT_PUBLIC
+        if (obj_key == "S3Bucket"): 
+            bucket_permission = obj_value['publicAccess']['effectivePermission']
+            rname = obj_value['name']
+        
+        if (obj_key == "S3Object"):
+            rname = obj_value['key']
+        
+        if (len(tags) > 0):
+            for tag in tags:
+                # key = t['key']
+                # value = t['value']
+                
+                # tag = { 
+                #     "key": key, 
+                #     "value": value
+                # }
 
-    #description from macie finding 
-    event_description = macie_finding['description']
+                if (tag['key'] == "SensitiveDataClassification" and tag['value'] == "PII"):
+                    resource_list_sensitive.append(obj_key)
+                if (tag['key'] == "DataSecurityClassification" and tag['value'] == "CanaryBucket"):
+                    resource_list_canary.append(obj_key)
+            
+        resource_list.append(obj_key)
+
     
     # macie severity score 
     severity_desc = macie_finding['severity']['description']
@@ -176,65 +183,63 @@ def lambda_handler(event, _context):
     descriptions    = []
     finding_types   = []
 
-    event_description    = "There was an attempted " + action_type + " on your secure S3 resources. " \
-        + str(n_resources) + " resources are affected."
-    
-    event_desc_sensitive = "Sensitive data containing PII, stored in the resources [" \
-        + ", ".join(resource_list_sensitive) + "] may have been compromised."
-    event_desc_canary    = "One or more canaries [" + ", ".join(resource_list_canary) + "] may have been compromised."
-
+    #description from macie finding 
+    event_description = macie_finding['description']
     descriptions.append(event_description)
 
+    event_description_type    = "There was an attempted " + action_type + " on your secure S3 resources. " \
+        + str(n_resources) + " resources are affected."
+    descriptions.append(event_description_type)
+
     if (len(resource_list_sensitive) > 0):
+        event_desc_sensitive = "Sensitive data containing PII, stored in the resources [" \
+            + ", ".join(resource_list_sensitive) + "] may have been compromised."
         descriptions.append(event_desc_sensitive)
         finding_types.append("Sensitive Data Identifications/PII")
 
     if (len(resource_list_canary) > 0):
+        event_desc_canary    = "One or more canaries [" + ", ".join(resource_list_canary) + "] may have been compromised."
         descriptions.append(event_desc_canary)
         finding_types.append("TTPs/Initial Access")
     
     description = " ".join(descriptions)
 
-    # TODO: GET ARN OF BUCKET ITSELF
-
-    job_arn = macie_findning['classificationDetails']['jobArn']
+    job_arn = macie_finding['classificationDetails']['jobArn']
 
     ## Add Additional SecurityHub Finding Metadata
-    # arn              = detail['resourcesAffected']['s3Bucket']['arn']
-
-    product_arn         = "arn:aws:securityhub:" + account_region + ":" + account_id + ":" + "product/soaring/v1"
+    product_arn         = "arn:aws:securityhub:" + account_region + ":" + account_id + ":" + "product/soaring/v2"
     finding_id          = "/".join([account_region, account_id, event_id])          # Id
     sources             = account_source.split(".")
     generator_id        = "-".join([sources[0], sources[1], cloud_event['id']])     # GeneratorId
     
     ## Get event timestamp
     ## the three timestamps may be different in the Macie findings
-    # first_observed_at   = detail['eventTime']                                     # when the event was first observed (event created at)
+    first_observed_at   = detail['eventTime']                                     # when the event was first observed (event created at)
     updated_at          = macie_finding['updatedAt']                                # when the event was updated
     created_at          = datetime.utcnow().isoformat() + "Z"                       # when THIS finding was created (time now)
 
     # IP address details
     # ip_details  = detail['policyDetails']['actor']['ipAddressDetails']
     ip_details  = {
-                    "ipAddressV4": "13.210.232.8",
-                    "ipOwner": {
-                        "asn": "AS16509",
-                        "asnOrg": "Amazon.com, Inc.",
-                        "isp": "Amazon Technologies Inc.",
-                        "org": "AWS EC2 (ap-southeast-2)"
-                    },
-                    "ipCountry": {
-                        "code": "AU",
-                        "name": "Australia"
-                    },
-                    "ipCity": {
-                        "name": "Sydney"
-                    },
-                    "ipGeoLocation": {
-                        "lat": -33.8591,
-                        "lon": 151.2002
-                    }
-                }
+        "ipAddressV4": "13.210.232.8",
+        "ipOwner": {
+            "asn": "AS16509",
+            "asnOrg": "Amazon.com, Inc.",
+            "isp": "Amazon Technologies Inc.",
+            "org": "AWS EC2 (ap-southeast-2)"
+        },
+        "ipCountry": {
+            "code": "AU",
+            "name": "Australia"
+        },
+        "ipCity": {
+            "name": "Sydney"
+        },
+        "ipGeoLocation": {
+            "lat": -33.8591,
+            "lon": 151.2002
+        }
+    }
 
     ip_address  = ip_details['ipAddressV4']
     ip_country  = ip_details['ipCountry']['name']
@@ -245,13 +250,16 @@ def lambda_handler(event, _context):
     ## get Google Static Map url
     map_url     = get_static_map_url(ip_lat, ip_long)
     
+    
+    
+    ## TODO: move this part into a separate lambda (at the end of the SFN)
+    
     ## output as json in AWS Security Findings Format
     ## Accountid, timestamp (CreatedAt and FirstObservedAt), description, resources (resourceID, resourceType), severity, title and types
-    
     finding = {
         "AwsAccountId"      : account_id,
         "CreatedAt"         : created_at,
-        "Description"       : event_description,
+        "Description"       : description,
         "GeneratorId"       : generator_id,
         "Id"                : finding_id, 
         "ProductArn"        : product_arn,  
@@ -273,28 +281,35 @@ def lambda_handler(event, _context):
         "Types"             : finding_types,
         "UpdatedAt"         : updated_at,
         "FirstObservedAt"   : first_observed_at,
-        "Note": {
+        "ProductFields": {
             "UserIdentity" : {
                 "userName"      : user_name,
                 "userType"      : user_type,
                 "userIP"        : ip_address,
                 "userCity"      : ip_city,
                 "userCountry"   : ip_country,
+                "userCoords"    : str(ip_lat + ip_long),
                 "userMap"       : map_url
             }, 
            "bucketInfo" : { 
-            "name"          : bucket_name, 
-            "s3object"      : s3Object, 
-            "permission"    : permission,
-            "size"          : size, 
+            "bucketName"        : bucket_name,
+            "bucketOwner"       : bucket_owner,
+            "s3object"          : s3Object,
+            "bucketPermission"  : bucket_permission
            }
         }
     }
     return finding
 
 
-filename = "macie-finding-output.txt"
+## IMPORTANT - comment out this section when deploying to Lambda
+filename = "message-soaring-after-job"
 with open(filename, "r") as f:
     cloud_event = json.load(f)
 
-print(json.dumps(lambda_handler(cloud_event), sort_keys=False, indent=4))
+lambda_context = {
+    "function_name": "lambda_macie"
+}
+
+lambda_result = lambda_handler(cloud_event, lambda_context)
+print( json.dumps(lambda_result, sort_keys=False, indent=4) )
