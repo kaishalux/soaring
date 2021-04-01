@@ -21,7 +21,7 @@ exports.handler = async (event, context) => {
 };
 
 const getGroups = async (user) => {
-    var params = { UserName: user };
+    const params = { UserName: user };
     return new Promise((resolve, reject) => {
         try {
             iam.listGroupsForUser(params, (err, data) => {
