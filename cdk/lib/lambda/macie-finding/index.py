@@ -2,8 +2,6 @@ import boto3
 import json
 from datetime import datetime
 
-
-
 def get_static_map_url(ip_lat, ip_long):
 
     with open("api_access.json", "r") as f:
@@ -118,7 +116,7 @@ def lambda_handler(event, _context):
     
     
     # ## Get Affected Resources Metadata
-
+    data_classification = macie_finding['classificationDetails']['result']
     bucket_info = macie_finding['resourcesAffected']['s3Bucket']
     bucket_name = bucket_info['name']
     bucket_owner = bucket_info['owner']['displayName']
@@ -251,32 +249,30 @@ def lambda_handler(event, _context):
     ## Accountid, timestamp (CreatedAt and FirstObservedAt), description, resources (resourceID, resourceType), severity, title and types
     
     finding = {
+        "AwsAccountId"      : account_id,
         "CreatedAt"         : created_at,
         "Description"       : event_description,
         "GeneratorId"       : generator_id,
         "Id"                : finding_id, 
         "ProductArn"        : product_arn,  
-        "SchemaVersion"     : "2018-10-08", 
-        "AwsAccountId"      : account_id,
-        "Region"            : account_region,
-        "sensitiveData"     : sensitive_data_list, 
-        "BucketInfo" : { 
-            "name"          : bucket_name, 
-            "arn"           : bucket_arn,
-            "s3object"      : s3Object, 
-            "permission"    : permission
-            "size"          : size, 
-            "permission"    : permission   
-
-        },
+        "SchemaVersion"     : "2018-10-08",
+        "Resources" : [
+            { 
+                "Type" : "AwsS3Bucket",
+                "Id"   : bucket_arn, 
+                "Partition" : "aws", 
+                "Region"  : account_region,
+                "DataClassification" : data_classification
+            }
+        ],
         "Severity"  : {
             "Label"         : severity_desc, 
             "Original"      : severity_score
         }, 
         "Title"             : title, 
+        "Types"             : finding_types,
         "UpdatedAt"         : updated_at,
         "FirstObservedAt"   : first_observed_at,
-        "Types"             : finding_types,
         "Note": {
             "UserIdentity" : {
                 "userName"      : user_name,
@@ -285,7 +281,13 @@ def lambda_handler(event, _context):
                 "userCity"      : ip_city,
                 "userCountry"   : ip_country,
                 "userMap"       : map_url
-            }
+            }, 
+           "bucketInfo" : { 
+            "name"          : bucket_name, 
+            "s3object"      : s3Object, 
+            "permission"    : permission,
+            "size"          : size, 
+           }
         }
     }
 return finding
