@@ -290,10 +290,10 @@ def lambda_handler(event, _context):
            }
         }
     }
-return finding
+    return finding
 
 
-filename = "message.txt"
+filename = "macie-finding-output.txt"
 with open(filename, "r") as f:
     cloud_event = json.load(f)
 
