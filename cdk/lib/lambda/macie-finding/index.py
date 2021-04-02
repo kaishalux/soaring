@@ -302,14 +302,14 @@ def lambda_handler(event, _context):
     return finding
 
 
-## IMPORTANT - comment out this section when deploying to Lambda
-filename = "message-soaring-after-job"
-with open(filename, "r") as f:
-    cloud_event = json.load(f)
+# ## IMPORTANT - comment out this section when deploying to Lambda
+# filename = "message-soaring-after-job"
+# with open(filename, "r") as f:
+#     cloud_event = json.load(f)
 
-lambda_context = {
-    "function_name": "lambda_macie"
-}
+# lambda_context = {
+#     "function_name": "lambda_macie"
+# }
 
-lambda_result = lambda_handler(cloud_event, lambda_context)
-print( json.dumps(lambda_result, sort_keys=False, indent=4) )
+# lambda_result = lambda_handler(cloud_event, lambda_context)
+# print( json.dumps(lambda_result, sort_keys=False, indent=4) )

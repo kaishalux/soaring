@@ -32,8 +32,7 @@ def lambda_handler(event, _context):
         )
     except Exception as e:
         print(f'Could not scan bucket {scan_bucket_name}')
-        print(e)
-        return
+        raise e
     
 
     macie_job = {
