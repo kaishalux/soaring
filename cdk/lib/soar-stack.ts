@@ -101,14 +101,14 @@ export class SoarStack extends cdk.Stack {
     const macieStatus = new tasks.LambdaInvoke(this, "MacieStatusStep", {
       "lambdaFunction": macieStatusLambda,
       "retryOnServiceExceptions": false,
-      "inputPath": "$",
+      "inputPath": "$.Payload",
       "outputPath": "$"
     });
 
     const macieFinding = new tasks.LambdaInvoke(this, "MacieFindingStep", {
       "lambdaFunction": macieFindingLambda,
       "retryOnServiceExceptions": false,
-      "inputPath": "$",
+      "inputPath": "$.Payload",
       "outputPath": "$"
     });
     
