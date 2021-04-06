@@ -8,7 +8,7 @@ macie_client = boto3.client('macie2')
 
 def lambda_handler(event, _context):
 
-    job_id = event['macieJobs']['macieJobId']
+    job_id = event['Payload']['macieJobs'][-1]['macieJobId']
     try:
         response = macie_client.describe_classification_job(jobId = job_id)
 
@@ -21,6 +21,9 @@ def lambda_handler(event, _context):
     except Exception as e:
         print(e)
         return
-
-    event['macieJobs']['jobStatus'] = response['jobStatus']
+    
+    for job in event['Payload']['macieJobs']:
+        if (job['macieJobId'] == job_id):
+            job['jobStatus'] = response['jobStatus']
+    
     return event

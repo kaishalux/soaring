@@ -70,7 +70,7 @@ export class SoarStack extends cdk.Stack {
     //   runtime: lambda.Runtime.NODEJS_12_X,
     //   handler: "index.exports.handler",
     //   memorySize: 512,
-    //   timeout: Duration.seconds(5)
+    //   timeout: Duration.seconds(15)
     // });
 
     // const findingLambda = new lambda.Function(this, "FindingLambda", {
@@ -146,13 +146,13 @@ export class SoarStack extends cdk.Stack {
           )
         .otherwise(waitForMacieJob));
 
-
     // Set up rest of infrastructure
     const stateMachine = new sfn.StateMachine(this, "SoaringSoln-Macie", {
       "stateMachineName": "soar-stack-macie",
-      "stateMachineType": sfn.StateMachineType.EXPRESS,
+      "stateMachineType": sfn.StateMachineType.STANDARD,
       "definition": sfnDefinition
     });
+    
 
     new Extract(this, "ExtractComponent", { sfn: stateMachine });
     Tags.of(this).add("OWNER", "team");

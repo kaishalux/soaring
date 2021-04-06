@@ -32,7 +32,7 @@ def lambda_handler(event, _context):
     ### Geo IP Lookup
 
     ## Open CloudTrail event in JSON format
-    cloud_event = event
+    cloud_event = event['Payload']
     job_id = cloud_event['macieJobs'][-1]['macieJobId']
     
     print("Looking for Macie finding " + job_id)

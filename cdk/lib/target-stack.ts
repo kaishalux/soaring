@@ -3,8 +3,10 @@
  */
 
 import * as s3 from "@aws-cdk/aws-s3";
+import * as s3deploy from "@aws-cdk/aws-s3-deployment";
 import * as cdk from '@aws-cdk/core';
 import { RemovalPolicy, Tags } from "@aws-cdk/core";
+import * as path from "path";
 
 export class TargetStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -17,6 +19,11 @@ export class TargetStack extends cdk.Stack {
       bucketName: "soaring-1-customer-reports",
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true
+    });
+
+    new s3deploy.BucketDeployment(this, 'DeployFiles', {
+      sources: [s3deploy.Source.asset(path.join(__dirname, "s3/soaring-1-customer-reports"))],       
+      destinationBucket: bucketTargetPii
     });
 
     // 2. Demo as a "canary" bucket which acts as an alarm when someone is trying to look for data e.g. from phishing/leaked credentials
