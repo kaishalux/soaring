@@ -8,7 +8,7 @@ macie_client = boto3.client('macie2')
 
 def lambda_handler(event, _context):
 
-    job_id = event['Payload']['macieJobs'][-1]['macieJobId']
+    job_id = event['Payload']['macieJobs']['macieJobId']
     try:
         response = macie_client.describe_classification_job(jobId = job_id)
 
@@ -22,8 +22,6 @@ def lambda_handler(event, _context):
         print(e)
         return
     
-    for job in event['Payload']['macieJobs']:
-        if (job['macieJobId'] == job_id):
-            job['jobStatus'] = response['jobStatus']
+    event['Payload']['macieJobs']['jobStatus'] = response['jobStatus']
     
     return event

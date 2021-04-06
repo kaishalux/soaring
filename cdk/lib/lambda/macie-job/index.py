@@ -43,7 +43,7 @@ def lambda_handler(event, _context):
     }
     
     
-    event['macieJobs'] = [macie_job]
+    event['macieJobs'] = macie_job
 
     return event
 

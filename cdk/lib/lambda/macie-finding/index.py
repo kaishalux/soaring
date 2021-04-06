@@ -33,7 +33,7 @@ def lambda_handler(event, _context):
 
     ## Open CloudTrail event in JSON format
     cloud_event = event['Payload']
-    job_id = cloud_event['macieJobs'][-1]['macieJobId']
+    job_id = cloud_event['macieJobs']['macieJobId']
     
     print("Looking for Macie finding " + job_id)
 

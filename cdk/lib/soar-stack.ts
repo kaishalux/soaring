@@ -139,7 +139,7 @@ export class SoarStack extends cdk.Stack {
       .start(macieJob)
       .next(macieStatus)
       .next(checkMacieStatus
-        .when(sfn.Condition.stringEquals('$.macieJobs.jobStatus', 'COMPLETE'),
+        .when(sfn.Condition.stringEquals('$.Payload.macieJobs.jobStatus', 'COMPLETE'),
           macieFinding
           // .next(getIdentity)
           // .next(finding)
