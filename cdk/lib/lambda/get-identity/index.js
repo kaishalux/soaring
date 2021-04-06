@@ -4,18 +4,18 @@ const iam = new aws.IAM();
 exports.handler = async (event, context) => {
     const response = event[0];
 
-    if (typeof(response.user.userIdentity.arn) == "undefined") return;
+    if (typeof(response.detail.userIdentity.arn) == "undefined") return;
 
-    const username = response.user.userIdentity.arn.split("/").pop();
-    response.user.userPolicies = await getUserPolicies(username);
+    const username = response.detail.userIdentity.arn.split("/").pop();
+    response.detail.userPolicies = await getUserPolicies(username);
 
-    if (typeof(response.user.userIdentity.sessionContext) != "undefined") {
-        const role = response.user.userIdentity.sessionContext.sessionIssuer.userName;
-        response.user.rolePolicies = await getRolePolicies(role);
+    if (typeof(response.detail.userIdentity.sessionContext) != "undefined") {
+        const role = response.detail.userIdentity.sessionContext.sessionIssuer.userName;
+        response.detail.rolePolicies = await getRolePolicies(role);
     }
 
-    response.user.groups = await getGroups(username);
-    for (const group of response.user.groups) {
+    response.detail.userGroups = await getGroups(username);
+    for (const group of response.detail.userGroups) {
         group.Policies = await getGroupPolicies(group.GroupName);
     }
 
