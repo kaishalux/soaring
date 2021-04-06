@@ -60,7 +60,8 @@ export class SoarStack extends cdk.Stack {
     macieFindingLambda.addToRolePolicy(new PolicyStatement({
       effect: Effect.ALLOW,
       actions: [
-        "macie2:GetFindings"
+        "macie2:GetFindings",
+        "macie2:ListFindings"
       ],
       resources: ["*"]
     }));

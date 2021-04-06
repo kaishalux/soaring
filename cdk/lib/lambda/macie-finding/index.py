@@ -35,14 +35,29 @@ def lambda_handler(event, _context):
     cloud_event = event
     job_id = cloud_event['macieJobs']['macieJobId']
     
-    print("Looking for Macie finding " + job_id)
+    # print("Looking for Macie job " + job_id)
 
     # make connection with macie 
     macie_client = boto3.client('macie2')
-    macie_finding = macie_client.get_findings(
-    findingIds = [
-        job_id
-    ])
+    
+    paginator = macie_client.get_paginator('list_findings')
+        
+    page_iterator = paginator.paginate(
+        findingCriteria = {
+            'criterion': {
+                'classificationDetails.jobId': {
+                    'eq': [job_id]
+                }
+            }
+        }
+    )
+    
+    for page in page_iterator:
+        findings_list = page['findingIds']
+        findings = macie_client.get_findings(findingIds=findings_list)
+    
+    macie_finding = findings['findings'][0]
+    # print(macie_finding)
 
     # get account information from macie finding
     account_id = macie_finding['accountId']
@@ -137,17 +152,19 @@ def lambda_handler(event, _context):
     resource_list_canary = [] 
     
 
-    for obj_key, obj_value in macie_finding['resourcesAffected']: 
+    for resource_key in macie_finding['resourcesAffected']: 
         
-        tags = obj_value['tags']
-
+        resource_details = macie_finding['resourcesAffected'][resource_key]
+        
+        tags = resource_details['tags']
+        
         # PUBLIC or NOT_PUBLIC
-        if (obj_key == "S3Bucket"): 
-            bucket_permission = obj_value['publicAccess']['effectivePermission']
-            rname = obj_value['name']
+        if (resource_key == "s3Bucket"): 
+            bucket_permission = resource_details['publicAccess']['effectivePermission']
+            rname = resource_details['name']
         
-        if (obj_key == "S3Object"):
-            rname = obj_value['key']
+        if (resource_key == "s3Object"):
+            rname = resource_details['key']
         
         if (len(tags) > 0):
             for tag in tags:
@@ -158,13 +175,12 @@ def lambda_handler(event, _context):
                 #     "key": key, 
                 #     "value": value
                 # }
-
                 if (tag['key'] == "SensitiveDataClassification" and tag['value'] == "PII"):
-                    resource_list_sensitive.append(obj_key)
+                    resource_list_sensitive.append(rname)
                 if (tag['key'] == "DataSecurityClassification" and tag['value'] == "CanaryBucket"):
-                    resource_list_canary.append(obj_key)
+                    resource_list_canary.append(rname)
             
-        resource_list.append(obj_key)
+        resource_list.append(rname)
 
     
     # macie severity score 
@@ -185,24 +201,24 @@ def lambda_handler(event, _context):
 
     #description from macie finding 
     event_description = macie_finding['description']
-    descriptions.append(event_description)
+    # descriptions.append(event_description)
 
-    event_description_type    = "There was an attempted " + action_type + " on your secure S3 resources. " \
-        + str(n_resources) + " resources are affected."
+    event_description_type    = f"There was an attempted {action_type} on your secure S3 resources ({str(n_resources)} resources are affected)."
     descriptions.append(event_description_type)
 
     if (len(resource_list_sensitive) > 0):
-        event_desc_sensitive = "Sensitive data containing PII, stored in the resources [" \
-            + ", ".join(resource_list_sensitive) + "] may have been compromised."
+        sensitive_list_str      = ", ".join(resource_list_sensitive)
+        event_desc_sensitive    = f"Sensitive PII data stored in the S3 bucket [{sensitive_list_str}] may have been compromised."
         descriptions.append(event_desc_sensitive)
         finding_types.append("Sensitive Data Identifications/PII")
 
     if (len(resource_list_canary) > 0):
-        event_desc_canary    = "One or more canaries [" + ", ".join(resource_list_canary) + "] may have been compromised."
+        canary_list_str     = ", ".join(resource_list_canary)
+        event_desc_canary   = f"One or more canaries [{canary_list_str}] may have been compromised."
         descriptions.append(event_desc_canary)
         finding_types.append("TTPs/Initial Access")
     
-    description = " ".join(descriptions)
+    long_description = " ".join(descriptions)
 
     job_arn = macie_finding['classificationDetails']['jobArn']
 
@@ -215,8 +231,8 @@ def lambda_handler(event, _context):
     ## Get event timestamp
     ## the three timestamps may be different in the Macie findings
     first_observed_at   = detail['eventTime']                                     # when the event was first observed (event created at)
-    updated_at          = macie_finding['updatedAt']                                # when the event was updated
-    created_at          = datetime.utcnow().isoformat() + "Z"                       # when THIS finding was created (time now)
+    updated_at          = macie_finding['updatedAt'].isoformat() + "Z"              # when the event was updated
+    created_at          = datetime.utcnow().isoformat() + "Z"                     # when THIS finding was created (time now)
 
     # IP address details
     # ip_details  = detail['policyDetails']['actor']['ipAddressDetails']
@@ -259,7 +275,7 @@ def lambda_handler(event, _context):
     finding = {
         "AwsAccountId"      : account_id,
         "CreatedAt"         : created_at,
-        "Description"       : description,
+        "Description"       : event_description,
         "GeneratorId"       : generator_id,
         "Id"                : finding_id, 
         "ProductArn"        : product_arn,  
@@ -296,7 +312,8 @@ def lambda_handler(event, _context):
             "bucketOwner"       : bucket_owner,
             "s3object"          : s3Object,
             "bucketPermission"  : bucket_permission
-           }
+           },
+           "longDescription"    : long_description
         }
     }
     return finding
