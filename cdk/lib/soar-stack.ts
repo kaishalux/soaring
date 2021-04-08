@@ -10,6 +10,7 @@ import * as cdk from '@aws-cdk/core';
 import { Tags } from "@aws-cdk/core";
 import * as path from "path";
 import { Extract } from './soar/extract';
+import * as apigateway from '@aws-cdk/aws-apigateway';
 
 
 export class SoarStack extends cdk.Stack {
@@ -38,6 +39,16 @@ export class SoarStack extends cdk.Stack {
       ],
       resources: ["arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default"]
     }));
+
+    const slackResponse = new lambda.Function(this, "SlackResponse", {
+      code: lambda.Code.fromAsset(path.join(__dirname, "lambda/slack-response")),
+      runtime: lambda.Runtime.PYTHON_3_8,
+      handler: "index.lambda_handler",
+      memorySize: 512,
+    });
+    new apigateway.LambdaRestApi(this, 'myapi', {
+      handler: slackResponse,
+    });
 
     // Configure step function defintion
     const sfnDefinition = new tasks.LambdaInvoke(this, "IdStep", {

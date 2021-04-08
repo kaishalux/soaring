@@ -29,7 +29,7 @@
     "@aws-cdk/aws-s3": "^1.94.1",
     "@aws-cdk/aws-stepfunctions": "^1.94.1",
     "@aws-cdk/aws-stepfunctions-tasks": "^1.94.1",
-    "@aws-cdk/core": "1.94.1",
+    "@aws-cdk/core": "^1.94.1",
     "source-map-support": "^0.5.19"
   }
 }
