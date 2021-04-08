@@ -51,6 +51,7 @@ def makeSecurityHubFinding(event):
         i = i + 1
     event['ProductFields'] = { 
             "UserIdentity": json.dumps(event['Note']['UserIdentity']),
+            "Username": = json.dumps(event['Note']['UserIdentity']['userName']),
             "ProviderName": "soaring", 
             "ProviderVersion": "0.1"
         }
