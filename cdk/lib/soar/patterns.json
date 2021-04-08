@@ -11,7 +11,8 @@
                 {
                     "anything-but": [
                         "cloudtrail.amazonaws.com",
-                        "lambda.amazonaws.com"
+                        "lambda.amazonaws.com",
+                        "AWS Internal"
                     ]
                 }
             ],
