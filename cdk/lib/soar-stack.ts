@@ -66,6 +66,15 @@ export class SoarStack extends cdk.Stack {
       resources: ["*"]
     }));
 
+    const makeFindingLambda = new lambda.Function(this, "MakeFindingLambda", {
+      code: lambda.Code.fromAsset(path.join(__dirname, "lambda/make-finding")),
+      runtime: lambda.Runtime.PYTHON_3_8,
+      handler: "index.lambda_handler",
+      memorySize: 512,
+      timeout: Duration.seconds(15)
+    });
+
+
     // const getIdentityLambda = new lambda.Function(this, "IdLambda", {
     //   code: lambda.Code.fromAsset(path.join(__dirname, "lambda/get-identity")),
     //   runtime: lambda.Runtime.NODEJS_12_X,
@@ -92,6 +101,7 @@ export class SoarStack extends cdk.Stack {
 
 
     // Configure steps
+    
     const macieJob = new tasks.LambdaInvoke(this, "MacieJobStep", {
       "lambdaFunction": macieJobLambda,
       "retryOnServiceExceptions": false,
@@ -120,6 +130,13 @@ export class SoarStack extends cdk.Stack {
     
     const checkMacieStatus = new sfn.Choice(this, "checkMacieStatus");
 
+    const makeFinding = new tasks.LambdaInvoke(this, "MakeFindingStep", {
+      "lambdaFunction": makeFindingLambda,
+      "retryOnServiceExceptions": false,
+      "inputPath": "$.Payload",
+      "outputPath": "$"
+    });
+
     // const getIdentity = new tasks.LambdaInvoke(this, "IdStep", {
     //   "lambdaFunction": getIdentityLambda,
     //   "retryOnServiceExceptions": false,
@@ -142,6 +159,7 @@ export class SoarStack extends cdk.Stack {
       .next(checkMacieStatus
         .when(sfn.Condition.stringEquals('$.Payload.macieJobs.jobStatus', 'COMPLETE'),
           macieFinding
+          .next(makeFinding)
           // .next(getIdentity)
           // .next(finding)
           )
