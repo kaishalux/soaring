@@ -30,7 +30,7 @@ sechub = boto3.client('securityhub')
 def lambda_handler(event, context):
     finding = makeSecurityHubFinding(event.copy())
     response = sechub.batch_import_findings(Findings = [finding])
-    finding['ProductFields'] = event['Note']
+    finding['ProductFields'] = event['ProductFields']
     sendSlack(finding)
     return 
 
@@ -50,13 +50,13 @@ def makeSecurityHubFinding(event):
         del event['Resources'][i]['Name']
         i = i + 1
     event['ProductFields'] = { 
-            "UserIdentity": json.dumps(event['Note']['UserIdentity']),
-            "Username": json.dumps(event['Note']['UserIdentity']['userName']),
+            "UserIdentity": json.dumps(event['ProductFields']['UserIdentity']),
+            "Username": json.dumps(event['ProductFields']['UserIdentity']['userName']),
             "ProviderName": "soaring", 
             "ProviderVersion": "0.1"
     }
-    event['Note'] = ""
-    del event['Note']
+    # event['Note'] = ""
+    # del event['Note']
     return event
      
 def sendSlack(event):

@@ -49,7 +49,7 @@ def lambda_handler (event, __context):
     user_identity   = detail['userIdentity']
     user_type       = user_identity['type']
     user_name       = user_identity['sessionContext']['sessionIssuer']['userName']
-    user_groups     = detail['userGroups']
+    # user_groups     = detail['userGroups']
     
     
     ## Get Affected Resources Metadata
@@ -213,8 +213,7 @@ def lambda_handler (event, __context):
                 "Type" : "AwsS3Bucket",
                 "Id"   : bucket_arn, 
                 "Partition" : "aws", 
-                "Region"  : account_region,
-                "DataClassification" : data_classification
+                "Region"  : account_region
             }
         ],
         "Severity"  : {
@@ -226,6 +225,7 @@ def lambda_handler (event, __context):
         "UpdatedAt"         : updated_at,
         "FirstObservedAt"   : first_observed_at,
         "ProductFields": {
+            "DataClassification" : data_classification,
             "UserIdentity"      : {
                 "userName"          : user_name,
                 "userType"          : user_type,
@@ -235,7 +235,7 @@ def lambda_handler (event, __context):
                 "userCoords"        : str(ip_lat + ip_long),
                 "userMap"           : map_url
             },
-            "UserGroups"        : user_groups,
+            # "UserGroups"        : user_groups,
             "BucketInfo"        : { 
                 "bucketName"        : bucket_name,
                 "bucketOwner"       : bucket_owner,

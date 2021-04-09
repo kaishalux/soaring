@@ -83,22 +83,20 @@ export class SoarStack extends cdk.Stack {
     //   timeout: Duration.seconds(15)
     // });
 
-    // const findingLambda = new lambda.Function(this, "FindingLambda", {
-    //   code: lambda.Code.fromAsset(path.join(__dirname, "lambda/finding")),
-    //   runtime: lambda.Runtime.PYTHON_3_8,
-    //   handler: "index.lambda_handler",
-    //   memorySize: 512,
-    // });
+    const pushFindingLambda = new lambda.Function(this, "pushFindingLambda", {
+      code: lambda.Code.fromAsset(path.join(__dirname, "lambda/finding")),
+      runtime: lambda.Runtime.PYTHON_3_8,
+      handler: "index.lambda_handler",
+      memorySize: 512,
+    });
 
-    // findingLambda.addToRolePolicy(new PolicyStatement({
-    //   effect: Effect.ALLOW,
-    //   actions: [
-    //     "securityhub:BatchImportFindings"
-    //   ],
-    //   resources: ["arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default"]
-    // }));
-
-
+    pushFindingLambda.addToRolePolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: [
+        "securityhub:BatchImportFindings"
+      ],
+      resources: ["arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default"]
+    }));
 
     // Configure steps
     
@@ -137,6 +135,13 @@ export class SoarStack extends cdk.Stack {
       "outputPath": "$"
     });
 
+    const pushFinding = new tasks.LambdaInvoke(this, "PushFindingStep", {
+      "lambdaFunction": pushFindingLambda,
+      "retryOnServiceExceptions": false,
+      "inputPath": "$.Payload",
+      "outputPath": "$"
+    });
+
     // const getIdentity = new tasks.LambdaInvoke(this, "IdStep", {
     //   "lambdaFunction": getIdentityLambda,
     //   "retryOnServiceExceptions": false,
@@ -160,14 +165,14 @@ export class SoarStack extends cdk.Stack {
         .when(sfn.Condition.stringEquals('$.Payload.macieJobs.jobStatus', 'COMPLETE'),
           macieFinding
           .next(makeFinding)
+          .next(pushFinding)
           // .next(getIdentity)
-          // .next(finding)
           )
         .otherwise(waitForMacieJob));
 
     // Set up rest of infrastructure
-    const stateMachine = new sfn.StateMachine(this, "SoaringSoln-Macie", {
-      "stateMachineName": "soar-stack-macie",
+    const stateMachine = new sfn.StateMachine(this, "SoaringSoln", {
+      "stateMachineName": "soar-stack",
       "stateMachineType": sfn.StateMachineType.STANDARD,
       "definition": sfnDefinition
     });
@@ -176,4 +181,5 @@ export class SoarStack extends cdk.Stack {
     new Extract(this, "ExtractComponent", { sfn: stateMachine });
     Tags.of(this).add("OWNER", "team");
   }
+
 }
