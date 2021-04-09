@@ -20,6 +20,7 @@ HOOK_URL = "https://" + boto3.client('kms').decrypt(
     EncryptionContext={'LambdaFunctionName': os.environ['AWS_LAMBDA_FUNCTION_NAME']}
 )['Plaintext'].decode('utf-8')
 """
+
 # for now store hook unencrypted
 HOOK_URL = "https://" + ENCRYPTED_HOOK_URL
 logger = logging.getLogger()
@@ -35,6 +36,7 @@ def lambda_handler(event, context):
     return 
 
 def makeSecurityHubFinding(event):
+
     event['GeneratorId'] = "soaring"
     event['ProductArn'] = "arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default"
     event['Region'] = ""
@@ -43,26 +45,39 @@ def makeSecurityHubFinding(event):
     event['Severity']['Label'] = event['Severity']['Label'].upper()
     event['UpdatedAt'] = datetime.datetime.now().isoformat() + "Z"
     event['Id'] = event['Id'] + " " + event['UpdatedAt']
+    
     i = 0
     while i < len(event['Resources']):
         #have this make and then delete a key to stop me from deleting a key that doesnt exist
         event['Resources'][i]['Name'] = ""
         del event['Resources'][i]['Name']
         i = i + 1
+    
     event['ProductFields'] = { 
             "UserIdentity": json.dumps(event['ProductFields']['UserIdentity']),
             "Username": json.dumps(event['ProductFields']['UserIdentity']['userName']),
-            "ProviderName": "soaring", 
-            "ProviderVersion": "0.1"
+            "ProviderName": json.dumps(event['ProductFields']['ProviderName']), 
+            "ProviderVersion": json.dumps(event['ProductFields']['ProviderVersion'])
     }
+
     # event['Note'] = ""
     # del event['Note']
+    
     return event
      
 def sendSlack(event):
-    user = event['ProductFields']['UserIdentity'].copy() 
-    text = "%s \n\n*User:* %s \n*User Type:* %s \n*IP:* %s \n*Location:* <%s|%s, %s>" % (event['Description'], 
-            user['userName'], user['userType'], user['userIP'], user['userMap'], user['userCity'], user['userCountry'])
+
+    user = event['ProductFields']['UserIdentity'].copy()
+    long_description = event['ProductFields']['LongDescription']
+    account_region  = event['ProductFields']['BucketInfo']['accountRegion']
+    bucket_name     = event['ProductFields']['BucketInfo']['bucketName']
+    bucket_url      = f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
+    object_key      = event['ProductFields']['BucketInfo']['s3Object']['key']
+    object_url      = f"https://s3.console.aws.amazon.com/s3/objects/{bucket_name}?region={account_region}&prefix={object_key}"
+
+    text = "%s \n\n*Resources Affected:*\n S3 Bucket: <%s|%s>\n S3 Object: <%s|%s>\n\n*User:* %s \n*User Type:* %s \n*IP:* %s \n*Location:* <%s|%s, %s>" \
+        % (long_description, bucket_url, bucket_name, object_url, object_key, user['userName'], user['userType'], user['userIP'], user['userMap'], user['userCity'], user['userCountry'])
+    
     slack_message = {
         'channel': SLACK_CHANNEL,
         'text': text,
@@ -71,7 +86,7 @@ def sendSlack(event):
     			"type": "header",
     			"text": {
     				"type": "plain_text",
-    				"text": event['Title'] + " ["+event['Severity']['Label']+"]",
+    				"text": event['Title'] + " [" + event['Severity']['Label'] + "]",
     			}
     		},
     		{
@@ -88,7 +103,7 @@ def sendSlack(event):
     				"text": "%s, %s" % (user['userCity'], user['userCountry']),
     			},
     			"image_url": user['userMap'],
-    			"alt_text": "IP location"
+    			"alt_text": "IP Location"
     		}
     	]
     }

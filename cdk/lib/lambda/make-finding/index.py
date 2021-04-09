@@ -48,7 +48,8 @@ def lambda_handler (event, __context):
     action_type     = detail['eventType']
     user_identity   = detail['userIdentity']
     user_type       = user_identity['type']
-    user_name       = user_identity['sessionContext']['sessionIssuer']['userName']
+    user_name       = user_identity['arn'].split(':')[-1]
+    if (user_type == "AssumedRole"): user_name = "/".join(user_name.split("/")[-2:])
     # user_groups     = detail['userGroups']
     
     
@@ -128,18 +129,24 @@ def lambda_handler (event, __context):
     event_description_type    = f"There was an attempted {action_type} on your secure S3 resources ({str(n_resources)} resources are affected)."
     descriptions.append(event_description_type)
 
+    if (title == "The S3 object contains multiple types of sensitive information."):
+        title = f"Attempted {action_type} on S3 object, containing multiple types of sensitive information"
+
     if (len(resource_list_sensitive) > 0):
         sensitive_list_str      = ", ".join(resource_list_sensitive)
         event_desc_sensitive    = f"Sensitive PII data stored in the S3 bucket [{sensitive_list_str}] may have been compromised."
         descriptions.append(event_desc_sensitive)
         finding_types.append("Sensitive Data Identifications/PII")
+        title = title + " (PII Data)"
 
     if (len(resource_list_canary) > 0):
         canary_list_str     = ", ".join(resource_list_canary)
         event_desc_canary   = f"One or more canaries [{canary_list_str}] may have been compromised."
         descriptions.append(event_desc_canary)
         finding_types.append("TTPs/Initial Access")
-    
+        title = title + " (Canary Bucket)"
+
+
     long_description = " ".join(descriptions)
 
     job_arn = macie_finding['classificationDetails']['jobArn']
@@ -152,7 +159,9 @@ def lambda_handler (event, __context):
 
 
     ## Add Additional SecurityHub Finding Metadata
-    product_arn         = "arn:aws:securityhub:" + account_region + ":" + account_id + ":" + "product/soaring/v2"
+    product_name        = "Soaring"
+    product_version     = "v0.3"
+    product_arn         = f"arn:aws:securityhub:{account_region}:{account_id}:product/{product_name}/{product_version}"
     finding_id          = "/".join([account_region, account_id, event_id])          # Id
     sources             = account_source.split(".")
     generator_id        = "-".join([sources[0], sources[1], cloud_event['id']])     # GeneratorId
@@ -239,10 +248,14 @@ def lambda_handler (event, __context):
             "BucketInfo"        : { 
                 "bucketName"        : bucket_name,
                 "bucketOwner"       : bucket_owner,
-                "s3object"          : s3Object,
-                "bucketPermission"  : bucket_permission
+                "bucketArn"         : bucket_arn,
+                "bucketPermission"  : bucket_permission,
+                "s3Object"          : s3Object,
+                "accountRegion"     : account_region
             },
-            "LongDescription"   : long_description
+            "LongDescription"   : long_description,
+            "ProviderName"      : product_name,
+            "ProviderVersion"   : product_version
         }
     }
 
