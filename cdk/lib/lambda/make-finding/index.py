@@ -46,6 +46,7 @@ def lambda_handler (event, __context):
     detail          = cloud_event['detail'] 
     event_id        = detail['eventID']
     action_type     = detail['eventType']
+    if (action_type == "AwsApiCall"): action_type = "AWSAPICall"
     user_identity   = detail['userIdentity']
     user_type       = user_identity['type']
     user_name       = user_identity['arn'].split(':')[-1]
