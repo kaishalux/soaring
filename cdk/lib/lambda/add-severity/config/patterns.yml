@@ -1,0 +1,27 @@
+# Each pattern matches on a JSON path and returns true or false
+# You can either use a regex pattern or a custom matcher defined in matchers/index.js
+patterns:
+  is_sensitive_s3:
+    description: Is Sensitive Access
+    path: $.type
+    pattern:
+      type: matches
+      value: SensitiveData.*
+  is_public_bucket:
+    description: Is S3 Bucket Public
+    path: $.resourcesAffected.s3Bucket.publicAccess.effectivePermission
+    pattern:
+      type: anything_but
+      value: NOT_PUBLIC
+  user_not_in_zone:
+    description: User out of operating zone
+    path: $.detail.ipDetails.ip
+    pattern:
+      type: custom
+      value: isOutOfOperatingZone
+  is_canary_bucket:
+    description: Is a Canary Bucket
+    path: $.resourcesAffected.s3Bucket.tags[?(@.key=="DataSecurityClassification")]
+    pattern:
+      type: matches
+      value: CanaryBucket

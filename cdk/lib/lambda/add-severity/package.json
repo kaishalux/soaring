@@ -1,0 +1,10 @@
+{
+    "version": "1.0.0",
+    "author": "soaring",
+    "type": "module",
+    "dependencies": {
+        "ip-cidr": "^2.1.4",
+        "js-yaml": "^4.0.0",
+        "jsonpath": "^1.1.1"
+    }
+}
