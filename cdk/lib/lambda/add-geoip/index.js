@@ -1,35 +1,49 @@
-import bent from 'bent';
-const apiKey = "e90b18e397b16a81c7d280bff4e369bc";
+import bent from "bent";
+const AWS = require("aws-sdk");
+const region = "ap-southeast-2";
 
-export async function lambda_handler(event, _context) {
-    // Ensure structure is as-expected
-    const result = event;
-    if (result?.detail === undefined) {
-        console.error(event);
-        throw new TypeError("Details is missing from event.");
-    }
+// Requires secret to already exist in form {"secret": "XXXXX"}
+const secretName = "prod/Soaring/ipstack";
 
-    // Grab GeoIP details
-    const sourceIpAddress = getIpAddress(event);
-    const geoIpDetails = await getGeoIpDetails(sourceIpAddress);
+// Cache secret manager
+const secretManagerClient = new AWS.SecretsManager({
+  region,
+});
 
-    // Insert into result
-    result.detail.ipDetails = geoIpDetails;
-    return result;
+async function getApiKey() {
+  const apiKey = await secretManagerClient
+    .getSecretValue({ SecretId: secretName })
+    .promise();
+  return JSON.parse(apiKey.SecretString).secret;
 }
 
 async function getGeoIpDetails(sourceIpAddress) {
-    const apiCall = bent(`http://api.ipstack.com/`, "GET", "json", 200);
-    const response = await apiCall(`${sourceIpAddress}?access_key=${apiKey}`);
-    return response;
+  const apiCall = bent(`http://api.ipstack.com/`, "GET", "json", 200);
+  const apiKey = await getApiKey();
+  const response = await apiCall(`${sourceIpAddress}?access_key=${apiKey}`);
+  return response;
 }
 
 function getIpAddress(event) {
-    const sourceIpAddress = event?.detail?.sourceIPAddress;
-    if (sourceIpAddress === undefined) {
-        console.error(event);
-        throw new TypeError("Source IP address is missing from event.");
-    }
+  const sourceIpAddress = event?.detail?.sourceIPAddress;
+  if (sourceIpAddress === undefined) {
+    throw new TypeError("Source IP address is missing from event.");
+  }
 
-    return sourceIpAddress;
+  return sourceIpAddress;
+}
+
+export async function lambda_handler(event, _context) {
+  // Ensure structure is as-expected
+  const result = event;
+  if (result?.detail === undefined) {
+    throw new TypeError("Details is missing from event.");
+  }
+  // Grab GeoIP details
+  const sourceIpAddress = getIpAddress(event);
+  const geoIpDetails = await getGeoIpDetails(sourceIpAddress);
+
+  // Insert into result
+  result.detail.ipDetails = geoIpDetails;
+  return result;
 }
