@@ -1,0 +1,8 @@
+{
+    "version": "1.0.0",
+    "author": "soaring",
+    "type": "module",
+    "dependencies": {
+        "bent": "^7.3.12"
+    }
+}
