@@ -2,15 +2,15 @@
  * This file contains the SOAR stack
  */
 
-import { Effect, PolicyStatement } from '@aws-cdk/aws-iam';
-import * as lambda from '@aws-cdk/aws-lambda';
-import * as sfn from '@aws-cdk/aws-stepfunctions';
-import * as tasks from '@aws-cdk/aws-stepfunctions-tasks';
-import * as cdk from '@aws-cdk/core';
+import { Effect, PolicyStatement } from "@aws-cdk/aws-iam";
+import * as lambda from "@aws-cdk/aws-lambda";
+import * as nodeLambda from "@aws-cdk/aws-lambda-nodejs";
+import * as sfn from "@aws-cdk/aws-stepfunctions";
+import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
+import * as cdk from "@aws-cdk/core";
 import { Duration, Tags } from "@aws-cdk/core";
 import * as path from "path";
-import { Extract } from './soar/extract';
-
+import { Extract } from "./soar/extract";
 
 export class SoarStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
@@ -22,58 +22,85 @@ export class SoarStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_8,
       handler: "index.lambda_handler",
       memorySize: 512,
-      timeout: Duration.seconds(15)
+      timeout: Duration.seconds(15),
     });
 
-    macieJobLambda.addToRolePolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: [
-        "macie2:CreateClassificationJob"
-      ],
-      resources: ["*"]
-    }));
+    macieJobLambda.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ["macie2:CreateClassificationJob"],
+        resources: ["*"],
+      })
+    );
 
     const macieStatusLambda = new lambda.Function(this, "MacieStatusLambda", {
       code: lambda.Code.fromAsset(path.join(__dirname, "lambda/macie-status")),
       runtime: lambda.Runtime.PYTHON_3_8,
       handler: "index.lambda_handler",
       memorySize: 512,
-      timeout: Duration.seconds(15)
+      timeout: Duration.seconds(15),
     });
 
-    macieStatusLambda.addToRolePolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: [
-        "macie2:DescribeClassificationJob"
-      ],
-      resources: ["*"]
-    }));
+    macieStatusLambda.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ["macie2:DescribeClassificationJob"],
+        resources: ["*"],
+      })
+    );
 
     const macieFindingLambda = new lambda.Function(this, "MacieFindingLambda", {
       code: lambda.Code.fromAsset(path.join(__dirname, "lambda/macie-finding")),
       runtime: lambda.Runtime.PYTHON_3_8,
       handler: "index.lambda_handler",
       memorySize: 512,
-      timeout: Duration.seconds(15)
+      timeout: Duration.seconds(15),
     });
 
-    macieFindingLambda.addToRolePolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: [
-        "macie2:GetFindings",
-        "macie2:ListFindings"
-      ],
-      resources: ["*"]
-    }));
+    macieFindingLambda.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ["macie2:GetFindings", "macie2:ListFindings"],
+        resources: ["*"],
+      })
+    );
+
+    const addGeoIpLambda = new nodeLambda.NodejsFunction(this, "AddGeoIp", {
+      entry: path.join(__dirname, "lambda/add-geoip", "index.js"),
+      handler: "handler",
+      memorySize: 512,
+    });
+
+    const addSeverityLambdaDir = "lambda/add-severity";
+    const addSeverityLambda = new nodeLambda.NodejsFunction(
+      this,
+      "AddSeverity",
+      {
+        entry: path.join(__dirname, addSeverityLambdaDir, "index.js"),
+        handler: "handler",
+        memorySize: 512,
+        bundling: {
+          nodeModules: ["jsonpath"],
+          target: "es2020",
+          commandHooks: {
+            afterBundling: (inputDir, outputDir) => [
+              `mkdir -p ${outputDir}/config`,
+              `cp -r ${inputDir}/lib/${addSeverityLambdaDir}/config/ ${outputDir}`,
+            ],
+            beforeBundling: (_inputDir, _outputDir) => [],
+            beforeInstall: (_inputDir, _outputDir) => [],
+          },
+        },
+      }
+    );
 
     const makeFindingLambda = new lambda.Function(this, "MakeFindingLambda", {
       code: lambda.Code.fromAsset(path.join(__dirname, "lambda/make-finding")),
       runtime: lambda.Runtime.PYTHON_3_8,
       handler: "index.lambda_handler",
       memorySize: 512,
-      timeout: Duration.seconds(15)
+      timeout: Duration.seconds(15),
     });
-
 
     // const getIdentityLambda = new lambda.Function(this, "IdLambda", {
     //   code: lambda.Code.fromAsset(path.join(__dirname, "lambda/get-identity")),
@@ -90,56 +117,71 @@ export class SoarStack extends cdk.Stack {
       memorySize: 512,
     });
 
-    pushFindingLambda.addToRolePolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: [
-        "securityhub:BatchImportFindings"
-      ],
-      resources: ["arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default"]
-    }));
+    pushFindingLambda.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ["securityhub:BatchImportFindings"],
+        resources: [
+          "arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default",
+        ],
+      })
+    );
 
     // Configure steps
-    
     const macieJob = new tasks.LambdaInvoke(this, "MacieJobStep", {
-      "lambdaFunction": macieJobLambda,
-      "retryOnServiceExceptions": false,
-      "inputPath": "$",
-      "outputPath": "$"
+      lambdaFunction: macieJobLambda,
+      retryOnServiceExceptions: false,
+      inputPath: "$",
+      outputPath: "$",
     });
 
     const macieStatus = new tasks.LambdaInvoke(this, "MacieStatusStep", {
-      "lambdaFunction": macieStatusLambda,
-      "retryOnServiceExceptions": false,
-      "inputPath": "$.Payload",
-      "outputPath": "$"
+      lambdaFunction: macieStatusLambda,
+      retryOnServiceExceptions: false,
+      inputPath: "$.Payload",
+      outputPath: "$",
     });
 
     const macieFinding = new tasks.LambdaInvoke(this, "MacieFindingStep", {
-      "lambdaFunction": macieFindingLambda,
-      "retryOnServiceExceptions": false,
-      "inputPath": "$.Payload",
-      "outputPath": "$"
+      lambdaFunction: macieFindingLambda,
+      retryOnServiceExceptions: false,
+      inputPath: "$.Payload",
+      outputPath: "$",
     });
-    
+
     const waitForMacieJob = new sfn.Wait(this, "waitForMacieJob", {
-      "time": sfn.WaitTime.duration(Duration.seconds(60))
+      time: sfn.WaitTime.duration(Duration.seconds(60)),
     });
-    waitForMacieJob.next(macieStatus)
-    
+    waitForMacieJob.next(macieStatus);
+
     const checkMacieStatus = new sfn.Choice(this, "checkMacieStatus");
 
+    const addGeoIpStep = new tasks.LambdaInvoke(this, "AddGeoIpStep", {
+      lambdaFunction: addGeoIpLambda,
+      retryOnServiceExceptions: false,
+      inputPath: "$",
+      outputPath: "$",
+    });
+
+    const addSeverityStep = new tasks.LambdaInvoke(this, "AddSeverityStep", {
+      lambdaFunction: addSeverityLambda,
+      retryOnServiceExceptions: false,
+      inputPath: "$.Payload",
+      outputPath: "$",
+    });
+
     const makeFinding = new tasks.LambdaInvoke(this, "MakeFindingStep", {
-      "lambdaFunction": makeFindingLambda,
-      "retryOnServiceExceptions": false,
-      "inputPath": "$.Payload",
-      "outputPath": "$"
+      lambdaFunction: makeFindingLambda,
+      retryOnServiceExceptions: false,
+      inputPath: "$",
+      outputPath: "$",
     });
 
     const pushFinding = new tasks.LambdaInvoke(this, "PushFindingStep", {
-      "lambdaFunction": pushFindingLambda,
-      "retryOnServiceExceptions": false,
-      "inputPath": "$.Payload",
-      "outputPath": "$"
+      lambdaFunction: pushFindingLambda,
+      retryOnServiceExceptions: false,
+      inputPath: "$.Payload",
+      outputPath: "$",
     });
 
     // const getIdentity = new tasks.LambdaInvoke(this, "IdStep", {
@@ -156,30 +198,34 @@ export class SoarStack extends cdk.Stack {
     //   "outputPath": "$"
     // })
 
-
     // Configure step function defintion
-    const sfnDefinition = sfn.Chain
-      .start(macieJob)
+    const sfnDefinition = sfn.Chain.start(macieJob)
       .next(macieStatus)
-      .next(checkMacieStatus
-        .when(sfn.Condition.stringEquals('$.Payload.macieJobs.jobStatus', 'COMPLETE'),
-          macieFinding
-          .next(makeFinding)
-          .next(pushFinding)
-          // .next(getIdentity)
+      .next(
+        checkMacieStatus
+          .when(
+            sfn.Condition.stringEquals(
+              "$.Payload.macieJobs.jobStatus",
+              "COMPLETE"
+            ),
+            macieFinding
+              .next(addGeoIpStep)
+              .next(addSeverityStep)
+              .next(makeFinding)
+              .next(pushFinding)
+            // .next(getIdentity)
           )
-        .otherwise(waitForMacieJob));
+          .otherwise(waitForMacieJob)
+      );
 
     // Set up rest of infrastructure
     const stateMachine = new sfn.StateMachine(this, "SoaringSoln", {
-      "stateMachineName": "soar-stack",
-      "stateMachineType": sfn.StateMachineType.STANDARD,
-      "definition": sfnDefinition
+      stateMachineName: "soar-stack",
+      stateMachineType: sfn.StateMachineType.STANDARD,
+      definition: sfnDefinition,
     });
-    
 
     new Extract(this, "ExtractComponent", { sfn: stateMachine });
     Tags.of(this).add("OWNER", "team");
   }
-
 }

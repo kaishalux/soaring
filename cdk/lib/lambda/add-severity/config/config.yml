@@ -1,0 +1,31 @@
+# You can manually set the weightings used for severity calculations
+
+# All weightings are added together and if they exceed the baseline
+# an alert is sent.
+baseline: 1
+severity:
+  INSIGNIFICANT: 0.2
+  MINOR: 0.5
+  MODERATE: 1
+  MAJOR: 2
+  CATASTROPHIC: 4
+
+# You can assign severity to usage patterns here
+# The pattern matchers are defined in ./patterns.yml
+# The severity of top-level patterns are added together to determine
+# whether they exceed the alerting baseline. Cofactors raise the severity of top-level patterns.
+patterns:
+  is_sensitive_s3:
+    severity: MINOR
+    cofactors:
+      - id: is_public_bucket
+        severity: MINOR
+      - id: user_not_in_zone
+        severity: MINOR
+  is_canary_bucket:
+    severity: MODERATE
+    cofactors:
+      # If the user is not in the zone - very unlikely
+      # to be an accidental access
+      - id: user_not_in_zone
+        severity: MAJOR
