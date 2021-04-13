@@ -11,9 +11,10 @@ def lambda_handler(event, _context):
     # make a connection to Amazon Macie
     macie_client = boto3.client('macie2')
 
+    print(event)
+
     date_time = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S%Z")
 
-    event_id            = event['id']
     acct_id             = event['account']
     scan_bucket_name    = event['detail']['requestParameters']['bucketName']
     

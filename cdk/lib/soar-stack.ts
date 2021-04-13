@@ -17,6 +17,22 @@ export class SoarStack extends cdk.Stack {
     super(scope, id, props);
 
     // Add Lambdas
+    const ingestEventLambda = new lambda.Function(this, "ingestEventLambda", {
+      code: lambda.Code.fromAsset(path.join(__dirname, "lambda/ingest-event")),
+      runtime: lambda.Runtime.PYTHON_3_8,
+      handler: "index.lambda_handler",
+      memorySize: 512,
+      timeout: Duration.seconds(15),
+    });
+
+    ingestEventLambda.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ["s3:GetBucketTagging"],
+        resources: ["*"],
+      })
+    );
+
     const macieJobLambda = new lambda.Function(this, "MacieJobLambda", {
       code: lambda.Code.fromAsset(path.join(__dirname, "lambda/macie-job")),
       runtime: lambda.Runtime.PYTHON_3_8,
@@ -128,10 +144,19 @@ export class SoarStack extends cdk.Stack {
     );
 
     // Configure steps
+    const ingestEvent = new tasks.LambdaInvoke(this, "ingestEventStep", {
+      lambdaFunction: ingestEventLambda,
+      retryOnServiceExceptions: false,
+      inputPath: "$",
+      outputPath: "$",
+    });
+
+    const eventChoice = new sfn.Choice(this, "eventChoice");
+
     const macieJob = new tasks.LambdaInvoke(this, "MacieJobStep", {
       lambdaFunction: macieJobLambda,
       retryOnServiceExceptions: false,
-      inputPath: "$",
+      inputPath: "$.Payload",
       outputPath: "$",
     });
 
@@ -201,22 +226,22 @@ export class SoarStack extends cdk.Stack {
     // Configure step function defintion
     const sfnDefinition = sfn.Chain.start(macieJob)
       .next(macieStatus)
-      .next(
-        checkMacieStatus
-          .when(
-            sfn.Condition.stringEquals(
-              "$.Payload.macieJobs.jobStatus",
-              "COMPLETE"
-            ),
-            macieFinding
+        .next(
+          checkMacieStatus
+            .when(
+              sfn.Condition.stringEquals(
+                "$.Payload.macieJobs.jobStatus",
+                "COMPLETE"
+              ),
+              macieFinding
               .next(addGeoIpStep)
               .next(addSeverityStep)
               .next(makeFinding)
               .next(pushFinding)
-            // .next(getIdentity)
-          )
-          .otherwise(waitForMacieJob)
-      );
+              // .next(getIdentity)    
+            )
+            .otherwise(waitForMacieJob)
+        );
 
     // Set up rest of infrastructure
     const stateMachine = new sfn.StateMachine(this, "SoaringSoln", {
