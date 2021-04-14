@@ -1,38 +1,46 @@
 {
   "name": "cdk",
   "version": "0.1.0",
+  "description": "This is a blank project for TypeScript development with CDK.",
+  "main": "jest.config.js",
   "bin": {
-    "cdk": "bin/cdk.js"
+    "cdk": "cdk.js"
+  },
+  "directories": {
+    "lib": "lib",
+    "test": "test"
   },
   "scripts": {
     "build": "tsc",
-    "watch": "tsc -w",
-    "test": "jest",
-    "cdk": "cdk"
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasnkapadia/soaring.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jasnkapadia/soaring/issues"
+  },
+  "homepage": "https://github.com/jasnkapadia/soaring#readme",
+  "dependencies": {
+    "@aws-cdk/assert": "^1.98.0",
+    "@aws-cdk/aws-cloudtrail": "^1.98.0",
+    "@aws-cdk/aws-events-targets": "^1.98.0",
+    "@aws-cdk/aws-iam": "^1.98.0",
+    "@aws-cdk/aws-lambda": "^1.98.0",
+    "@aws-cdk/aws-lambda-nodejs": "^1.98.0",
+    "@aws-cdk/aws-s3": "^1.98.0",
+    "@aws-cdk/aws-s3-deployment": "^1.98.0",
+    "@aws-cdk/aws-stepfunctions": "^1.98.0",
+    "@aws-cdk/aws-stepfunctions-tasks": "^1.98.0",
+    "@aws-cdk/core": "^1.98.0",
+    "aws-cdk": "^1.98.0"
   },
   "devDependencies": {
-    "@aws-cdk/assert": "1.97.0",
     "@types/jest": "^26.0.22",
-    "@types/node": "14.14.37",
-    "aws-cdk": "1.97.0",
-    "esbuild": "^0.11.6",
-    "jest": "^26.6.3",
-    "ts-jest": "^26.5.4",
-    "ts-node": "^9.1.1",
-    "typescript": "~4.2.4"
-  },
-  "dependencies": {
-    "@aws-cdk/aws-cloudtrail": "^1.97.0",
-    "@aws-cdk/aws-events": "^1.97.0",
-    "@aws-cdk/aws-events-targets": "^1.97.0",
-    "@aws-cdk/aws-iam": "^1.97.0",
-    "@aws-cdk/aws-lambda": "^1.97.0",
-    "@aws-cdk/aws-lambda-nodejs": "^1.97.0",
-    "@aws-cdk/aws-s3": "^1.97.0",
-    "@aws-cdk/aws-s3-deployment": "^1.97.0",
-    "@aws-cdk/aws-stepfunctions": "^1.97.0",
-    "@aws-cdk/aws-stepfunctions-tasks": "^1.97.0",
-    "@aws-cdk/core": "1.97.0",
-    "source-map-support": "^0.5.19"
+    "@types/node": "^14.14.37",
+    "esbuild": "^0.11.10"
   }
 }

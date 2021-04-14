@@ -100,7 +100,7 @@ export class SoarStack extends cdk.Stack {
           target: "es2020",
           commandHooks: {
             afterBundling: (inputDir, outputDir) => [
-              `mkdir -p ${outputDir}/config`,
+              `mkdir ${outputDir}/config`,
               `cp -r ${inputDir}/lib/${addSeverityLambdaDir}/config/ ${outputDir}`,
             ],
             beforeBundling: (_inputDir, _outputDir) => [],
@@ -118,16 +118,16 @@ export class SoarStack extends cdk.Stack {
       timeout: Duration.seconds(15),
     });
 
-    // const getIdentityLambda = new lambda.Function(this, "IdLambda", {
-    //   code: lambda.Code.fromAsset(path.join(__dirname, "lambda/get-identity")),
-    //   runtime: lambda.Runtime.NODEJS_12_X,
-    //   handler: "index.exports.handler",
-    //   memorySize: 512,
-    //   timeout: Duration.seconds(15)
-    // });
+    const getIdentityLambda = new lambda.Function(this, "IdLambda", {
+      code: lambda.Code.fromAsset(path.join(__dirname, "lambda/get-identity")),
+      runtime: lambda.Runtime.NODEJS_12_X,
+      handler: "index.exports.handler",
+      memorySize: 512,
+      timeout: Duration.seconds(15)
+    });
 
     const pushFindingLambda = new lambda.Function(this, "pushFindingLambda", {
-      code: lambda.Code.fromAsset(path.join(__dirname, "lambda/finding")),
+      code: lambda.Code.fromAsset(path.join(__dirname, "lambda/push-finding")),
       runtime: lambda.Runtime.PYTHON_3_8,
       handler: "index.lambda_handler",
       memorySize: 512,
@@ -151,7 +151,7 @@ export class SoarStack extends cdk.Stack {
       outputPath: "$",
     });
 
-    const eventChoice = new sfn.Choice(this, "eventChoice");
+    const eventTypeChoice = new sfn.Choice(this, "eventTypeChoice");
 
     const macieJob = new tasks.LambdaInvoke(this, "MacieJobStep", {
       lambdaFunction: macieJobLambda,
@@ -209,39 +209,43 @@ export class SoarStack extends cdk.Stack {
       outputPath: "$",
     });
 
-    // const getIdentity = new tasks.LambdaInvoke(this, "IdStep", {
-    //   "lambdaFunction": getIdentityLambda,
-    //   "retryOnServiceExceptions": false,
-    //   "inputPath": "$",
-    //   "outputPath": "$"
-    // });
-
-    // const finding = new tasks.LambdaInvoke(this, "FindingsStep", {
-    //   "lambdaFunction": findingLambda,
-    //   "retryOnServiceExceptions": false,
-    //   "inputPath": "$",
-    //   "outputPath": "$"
-    // })
+    const getIdentity = new tasks.LambdaInvoke(this, "IdStep", {
+      "lambdaFunction": getIdentityLambda,
+      "retryOnServiceExceptions": false,
+      "inputPath": "$",
+      "outputPath": "$"
+    });
 
     // Configure step function defintion
-    const sfnDefinition = sfn.Chain.start(macieJob)
-      .next(macieStatus)
-        .next(
-          checkMacieStatus
-            .when(
-              sfn.Condition.stringEquals(
-                "$.Payload.macieJobs.jobStatus",
-                "COMPLETE"
-              ),
-              macieFinding
-              .next(addGeoIpStep)
-              .next(addSeverityStep)
-              .next(makeFinding)
-              .next(pushFinding)
-              // .next(getIdentity)    
-            )
-            .otherwise(waitForMacieJob)
-        );
+    const sfnDefinition = sfn.Chain
+      .start(ingestEvent)
+      .next(eventTypeChoice
+        .when(
+          sfn.Condition.stringEquals(
+            "$.Payload.eventType",
+            "PII"
+          ),
+          macieJob
+          .next(macieStatus)
+          .next(
+            checkMacieStatus
+              .when(
+                sfn.Condition.stringEquals(
+                  "$.Payload.macieJobs.jobStatus",
+                  "COMPLETE"
+                ),
+                macieFinding
+              )
+              .otherwise(waitForMacieJob)
+          )
+        )
+        .afterwards()
+        .next(addGeoIpStep)
+        .next(addSeverityStep)
+        // .next(getIdentity)
+        .next(makeFinding)
+        .next(pushFinding)
+      );
 
     // Set up rest of infrastructure
     const stateMachine = new sfn.StateMachine(this, "SoaringSoln", {

@@ -13,7 +13,7 @@ def lambda_handler(event, _context):
 
     print(event)
 
-    date_time = datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S%Z")
+    date_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%Z")
 
     acct_id             = event['account']
     scan_bucket_name    = event['detail']['requestParameters']['bucketName']
@@ -23,7 +23,7 @@ def lambda_handler(event, _context):
             description = 'Scan affected buckets for PII',
             initialRun = True,
             jobType = 'ONE_TIME',
-            name = f'Soaring-S3Scan-{date_time}',
+            name = f'Soaring-S3Scan-{scan_bucket_name}-{date_time}',
             s3JobDefinition = {
                 'bucketDefinitions': [{
                     'accountId': acct_id, 
@@ -47,17 +47,3 @@ def lambda_handler(event, _context):
     event['macieJobs'] = macie_job
 
     return event
-
-
-
-## IMPORTANT - comment out this section when deploying to Lambda
-# filename = "message.txt"
-# with open(filename, "r") as f:
-#     cloud_event = json.load(f)
-
-# lambda_context = {
-#     "function_name": "lambda_macie"
-# }
-
-# lambda_result = lambda_handler(cloud_event, lambda_context)
-# print( json.dumps(lambda_result, sort_keys=False, indent=4) )
