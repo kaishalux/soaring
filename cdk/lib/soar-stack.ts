@@ -17,7 +17,7 @@ export class SoarStack extends cdk.Stack {
 		super(scope, id, props);
 
 		// Add Lambdas
-		const ingestEventLambda = new lambda.Function(this, "ingestEventLambda", {
+		const ingestEventLambda = new lambda.Function(this, "IngestEventLambda", {
 			code: lambda.Code.fromAsset(path.join(__dirname, "lambda/ingest-event")),
 			runtime: lambda.Runtime.PYTHON_3_8,
 			handler: "index.lambda_handler",
@@ -28,10 +28,7 @@ export class SoarStack extends cdk.Stack {
 		ingestEventLambda.addToRolePolicy(
 			new PolicyStatement({
 				effect: Effect.ALLOW,
-				actions: [
-					"s3:GetBucketTagging",
-					"s3:ListObjects"
-				],
+				actions: ["s3:GetBucketTagging"],
 				resources: ["*"],
 			})
 		);
@@ -80,15 +77,23 @@ export class SoarStack extends cdk.Stack {
 			new PolicyStatement({
 				effect: Effect.ALLOW,
 				actions: ["macie2:GetFindings", "macie2:ListFindings"],
-				resources: ["*"],
+				resources: ["*"]
 			})
 		);
 
 		const addGeoIpLambda = new nodeLambda.NodejsFunction(this, "AddGeoIp", {
 			entry: path.join(__dirname, "lambda/add-geoip", "index.js"),
-			handler: "handler",
+			handler: "lambda_handler",
 			memorySize: 512,
 		});
+
+        addGeoIpLambda.addToRolePolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ["secretsmanager:GetSecretValue"],
+                resources: ["*"]
+            })
+        )
 
 		const addSeverityLambdaDir = "lambda/add-severity";
 		const addSeverityLambda = new nodeLambda.NodejsFunction(
@@ -121,15 +126,28 @@ export class SoarStack extends cdk.Stack {
 			timeout: Duration.seconds(15),
 		});
 
-		const getIdentityLambda = new lambda.Function(this, "IdLambda", {
+		const getIdentityLambda = new lambda.Function(this, "GetIdentityLambda", {
 			code: lambda.Code.fromAsset(path.join(__dirname, "lambda/get-identity")),
 			runtime: lambda.Runtime.NODEJS_12_X,
-			handler: "index.exports.handler",
+			handler: "index.handler",
 			memorySize: 512,
 			timeout: Duration.seconds(15)
 		});
 
-		const pushFindingLambda = new lambda.Function(this, "pushFindingLambda", {
+        getIdentityLambda.addToRolePolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    "iam:ListGroupsForUser",
+                    "iam:ListAttachedUserPolicies",
+                    "iam:ListAttachedRolePolicies",
+                    "iam:ListAttachedGroupPolicies"
+                ],
+                resources: ["*"]
+            })
+        )
+
+		const pushFindingLambda = new lambda.Function(this, "PushFindingLambda", {
 			code: lambda.Code.fromAsset(path.join(__dirname, "lambda/finding")),
 			runtime: lambda.Runtime.PYTHON_3_8,
 			handler: "index.lambda_handler",
@@ -147,15 +165,15 @@ export class SoarStack extends cdk.Stack {
 		);
 
 		// Configure steps
-		const ingestEvent = new tasks.LambdaInvoke(this, "ingestEventStep", {
+		const ingestEvent = new tasks.LambdaInvoke(this, "IngestEventStep", {
 			lambdaFunction: ingestEventLambda,
 			retryOnServiceExceptions: false,
 			inputPath: "$",
 			outputPath: "$",
 		});
 
-		const eventTypeChoice = new sfn.Choice(this, "eventTypeChoice");
-        const canaryPass = new sfn.Pass(this, "canaryPassStep");
+		const eventTypeChoice = new sfn.Choice(this, "EventTypeChoice");
+        const canaryPass = new sfn.Pass(this, "CanaryPassStep");
 
 		const macieJob = new tasks.LambdaInvoke(this, "MacieJobStep", {
 			lambdaFunction: macieJobLambda,
@@ -178,17 +196,24 @@ export class SoarStack extends cdk.Stack {
 			outputPath: "$",
 		});
 
-		const waitForMacieJob = new sfn.Wait(this, "waitForMacieJob", {
+		const waitForMacieJob = new sfn.Wait(this, "WaitForMacieJob", {
 			time: sfn.WaitTime.duration(Duration.seconds(60)),
 		});
 		waitForMacieJob.next(macieStatus);
 
-		const checkMacieStatus = new sfn.Choice(this, "checkMacieStatus");
+		const checkMacieStatus = new sfn.Choice(this, "CheckMacieStatus");
 
-		const addGeoIpStep = new tasks.LambdaInvoke(this, "AddGeoIpStep", {
+        const getIdentity = new tasks.LambdaInvoke(this, "GetIdentityStep", {
+            "lambdaFunction": getIdentityLambda,
+            "retryOnServiceExceptions": false,
+            "inputPath": "$.Payload",
+            "outputPath": "$"
+        });
+
+        const addGeoIpStep = new tasks.LambdaInvoke(this, "AddGeoIpStep", {
 			lambdaFunction: addGeoIpLambda,
 			retryOnServiceExceptions: false,
-			inputPath: "$",
+			inputPath: "$.Payload",
 			outputPath: "$",
 		});
 
@@ -202,7 +227,7 @@ export class SoarStack extends cdk.Stack {
 		const makeFinding = new tasks.LambdaInvoke(this, "MakeFindingStep", {
 			lambdaFunction: makeFindingLambda,
 			retryOnServiceExceptions: false,
-			inputPath: "$",
+			inputPath: "$.Payload",
 			outputPath: "$",
 		});
 
@@ -213,12 +238,6 @@ export class SoarStack extends cdk.Stack {
 			outputPath: "$",
 		});
 
-		const getIdentity = new tasks.LambdaInvoke(this, "IdStep", {
-			"lambdaFunction": getIdentityLambda,
-			"retryOnServiceExceptions": false,
-			"inputPath": "$",
-			"outputPath": "$"
-		});
 
 		// Configure step function defintion
 		const sfnDefinition = sfn.Chain
@@ -252,7 +271,7 @@ export class SoarStack extends cdk.Stack {
                 )
 				.afterwards()
 			)
-            // .next(getIdentity)
+            .next(getIdentity)
             .next(addGeoIpStep)
             .next(addSeverityStep)
             .next(makeFinding)

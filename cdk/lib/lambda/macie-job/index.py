@@ -11,8 +11,6 @@ def lambda_handler(event, _context):
     # make a connection to Amazon Macie
     macie_client = boto3.client('macie2')
 
-    print(event)
-
     date_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%Z")
 
     acct_id             = event['account']
@@ -35,14 +33,12 @@ def lambda_handler(event, _context):
         print(f'Could not scan bucket {scan_bucket_name}')
         raise e
     
-
     macie_job = {
         "bucketName":   scan_bucket_name,
         "macieJobArn":  response['jobArn'],
         "macieJobId":   response['jobId'],
         "jobStatus":    "INCOMPLETE"
     }
-    
     
     event['macieJobs'] = macie_job
 
