@@ -1,0 +1,69 @@
+{
+    "CreatedAt": "2021-03-18T08:59:11.291756Z",
+    "Description": "There was an attempted AwsApiCall on your S3 resources. 2 resources are affected. Sensitive data containing PII, stored in the resources ['S3 Object soaring-1-customer-reports/'] may have been compromised. One or more canary buckets ['S3 Bucket soaring-1-customer-reports'] may have been compromised.",
+    "GeneratorId": "aws-s3-034d13e5-83ea-dfe3-a6cd-3472156eb38f",
+    "Id": "ap-southeast-2/659855141795/ae7810aa-0b0f-43ad-b4e9-493e042909ef",
+    "ProductArn": "arn:aws:securityhub:ap-southeast-2:659855141795:product/soaring/v1",
+    "SchemaVersion": "2018-10-08",
+    "AwsAccountId": "659855141795",
+    "Region": "ap-southeast-2",
+    "Resources": [
+        {
+            "Type": "S3 Object",
+            "Id": "arn:aws:s3:::soaring-1-customer-reports/",
+            "Name": "soaring-1-customer-reports/"
+        },
+        {
+            "Type": "S3 Bucket",
+            "Id": "arn:aws:s3:::soaring-1-customer-reports",
+            "Name": "soaring-1-customer-reports"
+        }
+    ],
+    "Severity": {
+        "Label": "Medium",
+        "Original": 6
+    },
+    "Title": "Attempted AWS API Call on S3 resources",
+    "UpdatedAt": "2021-03-17T11:42:48Z",
+    "FirstObservedAt": "2021-03-17T11:42:48Z",
+    "Types": [
+        "Sensitive Data Identifications/PII",
+        "TTPs/Initial Access"
+    ],
+    "Note": {
+        "UserIdentity": {
+            "userName": "TargetStack-CustomS3AutoDeleteObjectsCustomResourc-2LSFLW8U4CTB",
+            "userType": "AssumedRole",
+            "userIP": "192.0.2.0",
+            "userCity": "Ashburn",
+            "userCountry": "United States",
+            "userMap": "https://maps.googleapis.com/maps/api/staticmap?center=39.0481,-77.4728&zoom=9&size=600x400&scale=1&markers=39.0481,-77.4728&key=AIzaSyA6mPDpj5h6x4MWi842vsLdEWqIYKHKE8A"
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
