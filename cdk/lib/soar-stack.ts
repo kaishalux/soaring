@@ -155,6 +155,7 @@ export class SoarStack extends cdk.Stack {
 		});
 
 		const eventTypeChoice = new sfn.Choice(this, "eventTypeChoice");
+        const canaryPass = new sfn.Pass(this, "canaryPassStep");
 
 		const macieJob = new tasks.LambdaInvoke(this, "MacieJobStep", {
 			lambdaFunction: macieJobLambda,
@@ -242,11 +243,18 @@ export class SoarStack extends cdk.Stack {
 							.otherwise(waitForMacieJob)
 					)
 				)
+                .when(
+                    sfn.Condition.stringEquals(
+                        "$.Payload.soaringEventType",
+						"CANARY"
+                    ),
+                    canaryPass
+                )
 				.afterwards()
 			)
+            // .next(getIdentity)
             .next(addGeoIpStep)
             .next(addSeverityStep)
-            // .next(getIdentity)
             .next(makeFinding)
             .next(pushFinding);
 
