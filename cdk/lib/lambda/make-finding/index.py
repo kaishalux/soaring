@@ -153,9 +153,14 @@ def lambda_handler (event, __context):
     job_arn = macie_finding['classificationDetails']['jobArn']
 
 
+    if (event['soaringEventType'] == "CANARY") { 
+        severity_desc = " " 
+        severity_score = " "
+    } else { 
+        severity_desc = macie_finding['severity']['description']
+        severity_score = macie_finding['severity']['score']
+    }
     # macie severity score 
-    severity_desc = macie_finding['severity']['description']
-    severity_score = macie_finding['severity']['score']
 
 
 

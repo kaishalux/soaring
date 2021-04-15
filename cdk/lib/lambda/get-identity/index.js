@@ -2,7 +2,7 @@ const aws = require('aws-sdk');
 const iam = new aws.IAM();
 
 exports.handler = async (event, context) => {
-    const response = event[0];
+    const response = event;
 
     if (typeof(response.detail.userIdentity.arn) == "undefined") return;
 
