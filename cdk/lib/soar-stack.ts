@@ -126,6 +126,14 @@ export class SoarStack extends cdk.Stack {
 			timeout: Duration.seconds(15),
 		});
 
+		makeFindingLambda.addToRolePolicy(
+			new PolicyStatement({
+				effect: Effect.ALLOW,
+				actions: ["secretsmanager:GetSecretValue"],
+				resources: ["*"]
+			})
+		)
+
 		const getIdentityLambda = new lambda.Function(this, "GetIdentityLambda", {
 			code: lambda.Code.fromAsset(path.join(__dirname, "lambda/get-identity")),
 			runtime: lambda.Runtime.NODEJS_12_X,

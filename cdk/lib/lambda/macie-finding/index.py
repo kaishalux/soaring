@@ -34,21 +34,20 @@ def lambda_handler(event, _context):
     for page in page_iterator:
         findings_list = page['findingIds']
         findings = macie_client.get_findings(findingIds=findings_list)
+
+        ## save finding ids to cloud event
+        cloud_event['macieJobs']['findingIds'] = findings_list
     
     macie_finding = findings['findings'][0]
     # print(macie_finding)
     
 
-    ## GENERATE NEW EVENT FROM COMBINED EVENTS 
-    new_finding = macie_finding
-    new_finding['createdAt'] = new_finding['createdAt'].isoformat() + "Z"
-    new_finding['resourcesAffected']['s3Bucket']['createdAt'] = new_finding['resourcesAffected']['s3Bucket']['createdAt'].isoformat() + "Z"
-    new_finding['resourcesAffected']['s3Object']['lastModified'] = new_finding['resourcesAffected']['s3Object']['lastModified'].isoformat() + "Z"
-    new_finding['updatedAt'] = new_finding['updatedAt'].isoformat() + "Z"
-    
-    if ('macieJobs' in cloud_event):
-        del(cloud_event['macieJobs'])
+    ## GENERATE NEW EVENT FROM COMBINED EVENTS
+    macie_finding['createdAt'] = macie_finding['createdAt'].isoformat() + "Z"
+    macie_finding['resourcesAffected']['s3Bucket']['createdAt'] = macie_finding['resourcesAffected']['s3Bucket']['createdAt'].isoformat() + "Z"
+    macie_finding['resourcesAffected']['s3Object']['lastModified'] = macie_finding['resourcesAffected']['s3Object']['lastModified'].isoformat() + "Z"
+    macie_finding['updatedAt'] = macie_finding['updatedAt'].isoformat() + "Z"
 
-    new_finding['originalEvent'] = cloud_event
+    cloud_event['macieFinding'] = macie_finding
 
-    return new_finding
+    return cloud_event
