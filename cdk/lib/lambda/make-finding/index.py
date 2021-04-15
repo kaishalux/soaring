@@ -228,9 +228,9 @@ def lambda_handler (event, __context):
     if (soaring_event_type == "PII"):
         
         if (data_class_types > 1):
-            title = title + "object, containing multiple types of sensitive information (PII Data)"
+            title = title + " object, containing multiple types of sensitive information (PII Data)"
         else:
-            title = title + "object, containing sensitive information (PII Data)"
+            title = title + " object, containing sensitive information (PII Data)"
 
         sensitive_list_str      = ", ".join(resource_list_sensitive)
         event_desc_sensitive    = f"Sensitive PII data stored in the S3 bucket [{sensitive_list_str}] may have been compromised."
@@ -243,7 +243,7 @@ def lambda_handler (event, __context):
         event_desc_canary   = f"One or more canaries [{canary_list_str}] may have been compromised."
         descriptions.append(event_desc_canary)
         finding_types.append("TTPs/Initial Access")
-        title = title + "bucket, (Canary Bucket)"
+        title = title + " bucket (Canary Bucket)"
 
     description = " ".join(descriptions)
 
