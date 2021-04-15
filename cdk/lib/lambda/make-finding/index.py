@@ -289,8 +289,8 @@ def lambda_handler (event, __context):
         "Types"             : finding_types,
         "UpdatedAt"         : updated_at,
         "ProductFields": {
-            "soaring/ProviderName"      : product_name,
-            "soaring/ProviderVersion"   : product_version,
+            "ProviderName"      : product_name,
+            "ProviderVersion"   : product_version,
             "soaring/SeverityMatches"   : severity_matches,
             "soaring/ShouldAlert"       : should_alert,
             "soaring/UserName"          : user_name,
