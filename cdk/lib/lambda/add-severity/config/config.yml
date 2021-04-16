@@ -4,11 +4,11 @@
 # an alert is sent.
 baseline: 1
 severity:
-  INSIGNIFICANT: 0.2
-  MINOR: 0.5
-  MODERATE: 1
-  MAJOR: 2
-  CATASTROPHIC: 4
+  INFORMATIONAL: 0.2
+  LOW: 0.5
+  MEDIUM: 1
+  HIGH: 2
+  CRITICAL: 4
 
 # You can assign severity to usage patterns here
 # The pattern matchers are defined in ./patterns.yml

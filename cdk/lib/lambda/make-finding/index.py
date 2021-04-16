@@ -283,7 +283,7 @@ def lambda_handler (event, __context):
         "SchemaVersion"     : "2018-10-08",
         "Severity"  : {
             "Label"         : severity_desc, 
-            "Original"      : severity_score
+            "Original"      : str(severity_score)
         }, 
         "Title"             : title, 
         "Types"             : finding_types,
