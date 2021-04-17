@@ -157,7 +157,7 @@ export class SoarStack extends cdk.Stack {
         )
 
 		const pushFindingLambda = new lambda.Function(this, "PushFindingLambda", {
-			code: lambda.Code.fromAsset(path.join(__dirname, "lambda/finding")),
+			code: lambda.Code.fromAsset(path.join(__dirname, "lambda/push-finding")),
 			runtime: lambda.Runtime.PYTHON_3_8,
 			handler: "index.lambda_handler",
 			memorySize: 512,
