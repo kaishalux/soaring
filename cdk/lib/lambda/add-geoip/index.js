@@ -14,7 +14,7 @@ async function getApiKey() {
   const apiKey = await secretManagerClient
     .getSecretValue({ SecretId: secretName })
     .promise();
-  return JSON.parse(apiKey.SecretString).secret;
+  return JSON.parse(apiKey.SecretString)['prod/Soaring/ipstack'];
 }
 
 async function getGeoIpDetails(sourceIpAddress) {
