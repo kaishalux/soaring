@@ -1,10 +1,64 @@
 import json
+import boto3
+import base64
+from botocore.exceptions import ClientError
 from datetime import datetime
 
-def get_static_map_url(ip_lat, ip_long):
 
-    # with open("api_access.json", "r") as f:
-    #     api_access = json.load(f)
+def get_secret():
+
+    secret_name = "gcp-static-maps"
+    region_name = "ap-southeast-2"
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    # In this sample we only handle the specific exceptions for the 'GetSecretValue' API.
+    # See https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+    # We rethrow the exception by default.
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'DecryptionFailureException':
+            # Secrets Manager can't decrypt the protected secret text using the provided KMS key.
+            # Deal with the exception here, and/or rethrow at your discretion.
+            raise e
+        elif e.response['Error']['Code'] == 'InternalServiceErrorException':
+            # An error occurred on the server side.
+            # Deal with the exception here, and/or rethrow at your discretion.
+            raise e
+        elif e.response['Error']['Code'] == 'InvalidParameterException':
+            # You provided an invalid value for a parameter.
+            # Deal with the exception here, and/or rethrow at your discretion.
+            raise e
+        elif e.response['Error']['Code'] == 'InvalidRequestException':
+            # You provided a parameter value that is not valid for the current state of the resource.
+            # Deal with the exception here, and/or rethrow at your discretion.
+            raise e
+        elif e.response['Error']['Code'] == 'ResourceNotFoundException':
+            # We can't find the resource that you asked for.
+            # Deal with the exception here, and/or rethrow at your discretion.
+            raise e
+    else:
+        # Decrypts secret using the associated KMS CMK.
+        # Depending on whether the secret is a string or binary, one of these fields will be populated.
+        if 'SecretString' in get_secret_value_response:
+            secret = get_secret_value_response['SecretString']
+            return secret
+        else:
+            decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
+            return decoded_binary_secret
+            
+
+
+def get_static_map_url(ip_lat, ip_long):
     
     url_prefix      = "https://maps.googleapis.com/maps/api/staticmap?"
     map_center      = str(ip_lat) + "," + str(ip_long)
@@ -12,220 +66,221 @@ def get_static_map_url(ip_lat, ip_long):
     map_width       = 600
     map_height      = 400
     map_scale       = 1
-    key             = "AIzaSyA6mPDpj5h6x4MWi842vsLdEWqIYKHKE8A"
+    key             = json.loads(get_secret())['gcp-static-maps']
     
     map_url         = url_prefix + "center=" + map_center + "&zoom=" + str(map_zoom) \
                         + "&size=" + str(map_width) + "x" + str(map_height) \
                         + "&scale=" + str(map_scale) \
                         + "&markers=" + map_center \
                         + "&key=" + key
-
+    
     return map_url
 
 def lambda_handler (event, __context):
 
-    ## Get refs to macie finding and original cloud event
-    macie_finding = event
-    
-    cloud_event = macie_finding['originalEvent']
+    combined_event = event
+    soaring_event_type  = combined_event['soaringEventType']
 
 
-    # get account information from macie finding
-    account_id = macie_finding['accountId']
-    account_region = macie_finding['region']
-    title = macie_finding['title']
-    macie_type = macie_finding['type']
-
-    classification_details = macie_finding['classificationDetails']
-    job_arn = classification_details['jobArn']
-    job_id = classification_details['jobId']
+    # Get account information from Macie finding
+    account_id      = combined_event['account']
+    account_region  = combined_event['region']
+    account_source  = combined_event['source']
 
 
-    ## Get Basic Event Attributes
-    account_source  = cloud_event['source']
-    detail          = cloud_event['detail'] 
+    ## Get basic event attributes
+    detail          = combined_event['detail']
     event_id        = detail['eventID']
     action_type     = detail['eventType']
-    if (action_type == "AwsApiCall"): action_type = "AWSAPICall"
-    user_identity   = detail['userIdentity']
-    user_type       = user_identity['type']
-    user_name       = user_identity['arn'].split(':')[-1]
-    if (user_type == "AssumedRole"): user_name = "/".join(user_name.split("/")[-2:])
-    # user_groups     = detail['userGroups']
-    
-    
-    ## Get Affected Resources Metadata
-    data_classification = macie_finding['classificationDetails']['result']
 
-    bucket_info = macie_finding['resourcesAffected']['s3Bucket']
-    bucket_name = bucket_info['name']
-    bucket_owner = bucket_info['owner']['displayName']
-    bucket_arn = bucket_info['arn']
-    
-    bucket_object = macie_finding['resourcesAffected']['s3Object']
-    object_etag = bucket_object['eTag']
-    object_key = bucket_object['key']
+    if (action_type == "AwsApiCall"): 
+        action_type = "AWSAPICall"
 
-    s3Object = { 
-        "bucketArn" : bucket_arn,
-        "eTag" : object_etag, 
-        "key" : object_key
-    }
-    
-    
-    ## CATEGORISE AFFECTED RESOURCES BASED ON TAGS
-    resource_list = [] 
-    resource_list_sensitive = [] 
-    resource_list_canary = [] 
 
-    for resource_key in macie_finding['resourcesAffected']: 
-        
-        resource_details = macie_finding['resourcesAffected'][resource_key]
-        
-        tags = resource_details['tags']
-        
-        # PUBLIC or NOT_PUBLIC
-        if (resource_key == "s3Bucket"): 
-            bucket_permission = resource_details['publicAccess']['effectivePermission']
-            rname = resource_details['name']
-        
-        if (resource_key == "s3Object"):
-            rname = resource_details['key']
-        
-        if (len(tags) > 0):
-            for tag in tags:
-                # key = t['key']
-                # value = t['value']
-                
-                # tag = { 
-                #     "key": key, 
-                #     "value": value
-                # }
-                if (tag['key'] == "SensitiveDataClassification" and tag['value'] == "PII"):
-                    resource_list_sensitive.append(rname)
-                if (tag['key'] == "DataSecurityClassification" and tag['value'] == "CanaryBucket"):
-                    resource_list_canary.append(rname)
+    ## Get user identity attributes
+    user_identity       = detail['userIdentity']
+    user_groups_set     = detail['userGroups']
+    user_policies_set   = detail['userPolicies']
+    role_policies_set   = detail['rolePolicies']
+    user_type           = user_identity['type']
+    user_name           = user_identity['arn'].split(':')[-1]
+
+    if (user_type == "AssumedRole"):  
+        user_name = "/".join(user_name.split("/")[-2:])
+
+    ## Find user groups, policies, role policies
+    user_groups_list, user_group_policies_list, user_policies_list, role_policies_list = ([] for i in range(4))
+
+    if (len(user_groups_set) > 0):
+        for group in user_groups_set:
             
-        resource_list.append(rname)
+            user_groups_list.append(group['GroupName'])
+            
+            for policy in group['Policies']:
+                user_group_policies_list.append(policy['PolicyName'])
+    
+    if (len(user_policies_set) > 0):
+        for policy in user_policies_set:
+            user_policies_list.append(policy['PolicyName'])
 
-    
-    
-    
-    ## Generate event descriptions based on event type and contexts
-    # include info about resources + PII data
-    
-    ## first see if there is an AWS::S3::Bucket and check its tags
-    ## if the tags contain either of event_types, set the finding_type and event_desc accordingly
-    # event_types   = ["SensitiveData-PII", "CanaryBucket"]
-    # finding_types = ["TTPs/Initial Access", "Sensitive Data Identifications/PII"]
+    if (len(role_policies_set) > 0):
+        for policy in role_policies_set:
+            role_policies_list.append(policy['PolicyName'])
 
-    n_resources     = len(resource_list)
+    user_groups         = ", ".join(user_groups_list)
+    user_group_policies = ", ".join(user_group_policies_list)
+    user_policies       = ", ".join(user_policies_list)
+    role_policies       = ", ".join(role_policies_list)
+    
+
+    # Get severity score 
+    severity_desc   = combined_event['severity']['severity']['description']
+    severity_score  = combined_event['severity']['severity']['score']
+    should_alert    = combined_event['severity']['shouldAlert']
+    matches         = combined_event['severity']['matches']
+    severity_matches_list = []
+    
+    for match in matches:
+        desc = match['description']
+        
+        for cofactor in match['cofactors']:
+            desc = f"{desc} ({cofactor['description']})"
+        
+        severity_matches_list.append(desc)
+    
+    severity_matches = ", ".join(severity_matches_list)
+    
+
+    ## Add Additional SecurityHub Finding Metadata
+    product_name        = "soaring"
+    product_version     = "v1-0"
+    product_arn         = f"arn:aws:securityhub:{account_region}:{account_id}:product/{account_id}/default"
+    sh_finding_id       = "/".join([account_region, account_id, event_id])
+    sources             = account_source.split(".")
+    generator_id        = "-".join([sources[0], sources[1], combined_event['id']])
+    
+
+    ## Get event timestamps
+    first_observed_at   = detail['eventTime']
+    updated_at          = datetime.utcnow().isoformat() + "Z"
+    created_at          = datetime.utcnow().isoformat() + "Z"
+
+
+    ## Get affected resources metadata
+    bucket_name             = detail['requestParameters']['bucketName']
+    bucket_arn              = "arn:aws:s3:::" + bucket_name
+    resource_list_sensitive = [] 
+    resource_list_canary    = []
+
+    if (soaring_event_type == "CANARY"):
+        resource_list_canary.append(bucket_name)
+    
+    ## Get resource metadata from Macie Finding
+    if (soaring_event_type == "PII"):
+
+        macie_finding       = combined_event['macieFinding']
+        macie_finding_id    = combined_event['macieJobs']['findingIds'][0]
+        macie_finding_url   = f"https://{account_region}.console.aws.amazon.com/macie/home?region={account_region}#findings?itemId={macie_finding_id}"
+        
+        # PII specific metadata
+        classification_details  = macie_finding['classificationDetails']
+        data_classification     = classification_details['result']
+        data_class_types        = len(data_classification['sensitiveData'])
+
+        object_etag     = macie_finding['resourcesAffected']['s3Object']['eTag']
+        object_key      = macie_finding['resourcesAffected']['s3Object']['key']
+        macie_title     = macie_finding['title']
+
+        ## Object metadata from Macie finding
+        for resource_key in macie_finding['resourcesAffected']:
+
+            resource_details = macie_finding['resourcesAffected'][resource_key]
+        
+            # If resource is an S3 bucket, check public/non public acccess
+            if (resource_key == "s3Bucket"): 
+                bucket_permission = resource_details['publicAccess']['effectivePermission']
+                rname = resource_details['name']
+            
+            # If resource is an S3 object, get name
+            if (resource_key == "s3Object"):
+                rname = resource_details['key']
+            
+            resource_list_sensitive.append(rname)
+        
+    
+
+
+    ## Generate event description based on event type and contexts
+    ## include info about resources + PII data
+    n_resources     = len(resource_list_sensitive + resource_list_canary)
     descriptions    = []
     finding_types   = []
 
-    #description from macie finding 
-    event_description = macie_finding['description']
-    # descriptions.append(event_description)
-
-    event_description_type    = f"There was an attempted {action_type} on your secure S3 resources ({str(n_resources)} resources are affected)."
+    if (n_resources == 1):
+        event_description_type    = f"There was an attempted {action_type} on your secure S3 resources ({str(n_resources)} resource is affected)."
+    else:
+        event_description_type    = f"There was an attempted {action_type} on your secure S3 resources ({str(n_resources)} resources are affected)."
     descriptions.append(event_description_type)
 
-    if (title == "The S3 object contains multiple types of sensitive information."):
-        title = f"Attempted {action_type} on S3 object, containing multiple types of sensitive information"
+    ## Build title from 
+    title = f"Attempted {action_type} on S3"
 
-    if (len(resource_list_sensitive) > 0):
+    if (soaring_event_type == "PII"):
+        
+        if (data_class_types > 1):
+            title = title + " object, containing multiple types of sensitive information (PII Data)"
+        else:
+            title = title + " object, containing sensitive information (PII Data)"
+
         sensitive_list_str      = ", ".join(resource_list_sensitive)
         event_desc_sensitive    = f"Sensitive PII data stored in the S3 bucket [{sensitive_list_str}] may have been compromised."
         descriptions.append(event_desc_sensitive)
         finding_types.append("Sensitive Data Identifications/PII")
-        title = title + " (PII Data)"
 
-    if (len(resource_list_canary) > 0):
+    elif (soaring_event_type == "CANARY"):
+
         canary_list_str     = ", ".join(resource_list_canary)
         event_desc_canary   = f"One or more canaries [{canary_list_str}] may have been compromised."
         descriptions.append(event_desc_canary)
         finding_types.append("TTPs/Initial Access")
-        title = title + " (Canary Bucket)"
+        title = title + " bucket (Canary Bucket)"
 
+    description = " ".join(descriptions)
 
-    long_description = " ".join(descriptions)
-
-    job_arn = macie_finding['classificationDetails']['jobArn']
-
-
-    # macie severity score 
-    severity_desc = macie_finding['severity']['description']
-    severity_score = macie_finding['severity']['score']
-
-
-
-    ## Add Additional SecurityHub Finding Metadata
-    product_name        = "Soaring"
-    product_version     = "v0.3"
-    product_arn         = f"arn:aws:securityhub:{account_region}:{account_id}:product/{product_name}/{product_version}"
-    finding_id          = "/".join([account_region, account_id, event_id])          # Id
-    sources             = account_source.split(".")
-    generator_id        = "-".join([sources[0], sources[1], cloud_event['id']])     # GeneratorId
     
-    ## Get event timestamp
-    ## the three timestamps may be different in the Macie findings
-    first_observed_at   = detail['eventTime']                                     # when the event was first observed (event created at)
-    updated_at          = macie_finding['updatedAt']                              # when the event was updated
-    created_at          = datetime.utcnow().isoformat() + "Z"                     # when THIS finding was created (time now)
 
+    ## Get Geo IP details
+    ip_details  = detail['ipDetails']
 
-    # TODO: Add IP address details from Gordon's geolocation lambda
+    ip_address  = ip_details['ip']
+    ip_country  = ip_details['country_name']
+    ip_city     = ip_details['city']
+    ip_lat      = ip_details['latitude']
+    ip_long     = ip_details['longitude']
     
-    ip_details  = {
-        "ipAddressV4": "13.210.232.8",
-        "ipOwner": {
-            "asn": "AS16509",
-            "asnOrg": "Amazon.com, Inc.",
-            "isp": "Amazon Technologies Inc.",
-            "org": "AWS EC2 (ap-southeast-2)"
-        },
-        "ipCountry": {
-            "code": "AU",
-            "name": "Australia"
-        },
-        "ipCity": {
-            "name": "Sydney"
-        },
-        "ipGeoLocation": {
-            "lat": -33.8591,
-            "lon": 151.2002
-        }
-    }
-
-    ip_address  = ip_details['ipAddressV4']
-    ip_country  = ip_details['ipCountry']['name']
-    ip_city     = ip_details['ipCity']['name']
-    ip_lat      = ip_details['ipGeoLocation']['lat']
-    ip_long     = ip_details['ipGeoLocation']['lon']
-    
-    ## get Google Static Map url
+    ## Get Google Static Map url
     map_url     = get_static_map_url(ip_lat, ip_long)
     
     
     
-    ## output as json in AWS Security Findings Format
-    ## Accountid, timestamp (CreatedAt and FirstObservedAt), description, resources (resourceID, resourceType), severity, title and types
+    ## Output as JSON in AWS Security Findings Format
     finding = {
         "AwsAccountId"      : account_id,
         "CreatedAt"         : created_at,
-        "Description"       : event_description,
+        "Description"       : description,
+        "FirstObservedAt"   : first_observed_at,
         "GeneratorId"       : generator_id,
-        "Id"                : finding_id, 
+        "Id"                : sh_finding_id, 
         "ProductArn"        : product_arn,  
-        "SchemaVersion"     : "2018-10-08",
         "Resources" : [
             { 
-                "Type" : "AwsS3Bucket",
-                "Id"   : bucket_arn, 
+                "Type"      : "AwsS3Bucket",
+                "Id"        : bucket_arn, 
                 "Partition" : "aws", 
-                "Region"  : account_region
+                "Region"    : account_region
             }
         ],
+        "SchemaVersion"     : "2018-10-08",
         "Severity"  : {
             "Label"         : severity_desc, 
             "Original"      : severity_score
@@ -233,31 +288,33 @@ def lambda_handler (event, __context):
         "Title"             : title, 
         "Types"             : finding_types,
         "UpdatedAt"         : updated_at,
-        "FirstObservedAt"   : first_observed_at,
         "ProductFields": {
-            "DataClassification" : data_classification,
-            "UserIdentity"      : {
-                "userName"          : user_name,
-                "userType"          : user_type,
-                "userIP"            : ip_address,
-                "userCity"          : ip_city,
-                "userCountry"       : ip_country,
-                "userCoords"        : str(ip_lat + ip_long),
-                "userMap"           : map_url
-            },
-            # "UserGroups"        : user_groups,
-            "BucketInfo"        : { 
-                "bucketName"        : bucket_name,
-                "bucketOwner"       : bucket_owner,
-                "bucketArn"         : bucket_arn,
-                "bucketPermission"  : bucket_permission,
-                "s3Object"          : s3Object,
-                "accountRegion"     : account_region
-            },
-            "LongDescription"   : long_description,
             "ProviderName"      : product_name,
-            "ProviderVersion"   : product_version
+            "ProviderVersion"   : product_version,
+            "soaring/SeverityMatches"   : severity_matches,
+            "soaring/ShouldAlert"       : should_alert,
+            "soaring/UserName"          : user_name,
+            "soaring/UserType"          : user_type,
+            "soaring/UserIP"            : ip_address,
+            "soaring/UserCity"          : ip_city,
+            "soaring/UserCountry"       : ip_country,
+            "soaring/UserCoords"        : str(ip_lat + ip_long),
+            "soaring/UserMap"           : map_url,
+            "soaring/UserGroups"        : user_groups,
+            "soaring/UserGroupPolicies" : user_group_policies,
+            "soaring/UserPolicies"      : user_policies,
+            "soaring/UserRolePolicies"  : role_policies
         }
     }
+
+    ## Add additional fields for PII use case
+    if (soaring_event_type == "PII"):
+
+        finding['ProductFields']['soaring/MacieFindingId']  = macie_finding_id
+        finding['ProductFields']['soaring/MacieFindingUrl'] = macie_finding_url
+        finding['ProductFields']['soaring/MacieTitle']      = macie_title
+        finding['ProductFields']['soaring/S3Object']        = object_key
+        finding['ProductFields']['soaring/S3ObjectEtag']    = object_etag
+        finding['ProductFields']['soaring/S3BucketPermission'] = bucket_permission
 
     return finding

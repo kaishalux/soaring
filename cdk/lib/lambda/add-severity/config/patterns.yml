@@ -3,13 +3,13 @@
 patterns:
   is_sensitive_s3:
     description: Is Sensitive Access
-    path: $.type
+    path: $.macieFinding.type
     pattern:
       type: matches
       value: SensitiveData.*
   is_public_bucket:
     description: Is S3 Bucket Public
-    path: $.resourcesAffected.s3Bucket.publicAccess.effectivePermission
+    path: $.macieFinding.resourcesAffected.s3Bucket.publicAccess.effectivePermission
     pattern:
       type: anything_but
       value: NOT_PUBLIC
@@ -21,7 +21,7 @@ patterns:
       value: isOutOfOperatingZone
   is_canary_bucket:
     description: Is a Canary Bucket
-    path: $.resourcesAffected.s3Bucket.tags[?(@.key=="DataSecurityClassification")]
+    path: $.soaringEventType
     pattern:
       type: matches
-      value: CanaryBucket
+      value: CANARY

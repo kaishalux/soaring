@@ -21,7 +21,7 @@ export class TargetStack extends cdk.Stack {
       autoDeleteObjects: true
     });
 
-    new s3deploy.BucketDeployment(this, 'DeployFiles', {
+    new s3deploy.BucketDeployment(this, 'DeployFiles1', {
       sources: [s3deploy.Source.asset(path.join(__dirname, "s3/soaring-1-customer-reports"))],       
       destinationBucket: bucketTargetPii
     });
@@ -33,6 +33,11 @@ export class TargetStack extends cdk.Stack {
       bucketName: "soaring-2-company-confidential-secrets",
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true
+    });
+
+    new s3deploy.BucketDeployment(this, 'DeployFiles2', {
+      sources: [s3deploy.Source.asset(path.join(__dirname, "s3/soaring-2-company-confidential-secrets"))],       
+      destinationBucket: bucketTargetCanary
     });
 
     Tags.of(this).add("OWNER", "team");
