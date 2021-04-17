@@ -20,10 +20,10 @@ def lambda_handler(event, context):
 	temp = urllib.parse.unquote_plus(payload)
 	temp = temp.split("=",1)[1]
 	slackJson = json.loads(temp)
-	logger.info(slackJson["actions"])
+	# logger.info(slackJson["actions"])
 	if slackJson["actions"][0]["type"] == "static_select":
 		response = updateFinding(slackJson)
-		logger.info(response)
+		# logger.info(response)
 		response = {"statusCode" : response["ResponseMetadata"]["HTTPStatusCode"]}
 	#if they clicked a button
 	else:
