@@ -21,7 +21,7 @@ def lambda_handler(event, context):
 	finding = makeSecurityHubFinding(event.copy())
 	response = sechub.batch_import_findings(Findings = [finding])
 	#push finding to slack if secops should be alerted
-	if (finding["ProductFields"]["soaring/ShouldAlert"] == "true"): sendSlack(finding)
+	if (finding["ProductFields"]["soaring/ShouldAlert"] == "True"): sendSlack(finding)
 	return response
 
 def makeSecurityHubFinding(event):
