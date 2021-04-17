@@ -283,7 +283,7 @@ def lambda_handler (event, __context):
         "SchemaVersion"     : "2018-10-08",
         "Severity"  : {
             "Label"         : severity_desc, 
-            "Original"      : severity_score
+            "Original"      : str(severity_score)
         }, 
         "Title"             : title, 
         "Types"             : finding_types,
@@ -292,7 +292,7 @@ def lambda_handler (event, __context):
             "ProviderName"      : product_name,
             "ProviderVersion"   : product_version,
             "soaring/SeverityMatches"   : severity_matches,
-            "soaring/ShouldAlert"       : should_alert,
+            "soaring/ShouldAlert"       : str(should_alert),
             "soaring/UserName"          : user_name,
             "soaring/UserType"          : user_type,
             "soaring/UserIP"            : ip_address,

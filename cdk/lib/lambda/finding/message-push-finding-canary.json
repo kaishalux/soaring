@@ -1,0 +1,44 @@
+{
+  "AwsAccountId": "659855141795",
+  "CreatedAt": "2021-04-15T11:38:45.516328Z",
+  "Description": "There was an attempted AWSAPICall on your secure S3 resources (1 resources are affected). One or more canaries [soaring-2-company-confidential-secrets] may have been compromised.",
+  "FirstObservedAt": "2021-04-15T11:38:34Z",
+  "GeneratorId": "aws-s3-c0977136-4964-9897-657e-7d220dae0018",
+  "Id": "ap-southeast-2/659855141795/43403da1-1990-4979-a3cf-3d075c595237",
+  "ProductArn": "arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default",
+  "Resources": [
+    {
+      "Type": "AwsS3Bucket",
+      "Id": "arn:aws:s3:::soaring-2-company-confidential-secrets",
+      "Partition": "aws",
+      "Region": "ap-southeast-2"
+    }
+  ],
+  "SchemaVersion": "2018-10-08",
+  "Severity": {
+    "Label": "CRITICAL",
+    "Original": "3"
+  },
+  "Title": "Attempted AWSAPICall on S3bucket, (Canary Bucket)",
+  "Types": [
+    "TTPs/Initial Access"
+  ],
+  "UpdatedAt": "2021-04-15T11:38:45.516318Z",
+  "ProductFields": {
+    "soaring/ProviderName": "soaring",
+    "soaring/ProviderVersion": "v1-0",
+    "soaring/SeverityMatches": "Is a Canary Bucket (User out of operating zone)",
+    "soaring/ShouldAlert": "true",
+    "soaring/UserName": "lambda-soaring-dev/Jas",
+    "soaring/UserType": "AssumedRole",
+    "soaring/UserIP": "220.233.193.97",
+    "soaring/UserCity": "Sydney",
+    "soaring/UserCountry": "Australia",
+    "soaring/UserCoords": "117.29999923706055",
+    "soaring/UserMap": "https://maps.googleapis.com/maps/api/staticmap?center=-33.88100051879883,151.18099975585938&zoom=9&size=600x400&scale=1&markers=-33.88100051879883,151.18099975585938&key=AIzaSyA6mPDpj5h6x4MWi842vsLdEWqIYKHKE8A",
+    "soaring/UserGroups": "AllUsers",
+    "soaring/UserGroupPolicies": "IAMUserChangePassword, IAMReadOnlyAccess, IAMUserSSHKeys, assume-role, iam-mfa-permissions",
+    "soaring/UserPolicies": "",
+    "soaring/UserRolePolicies": "soaring-dev-policy"
+  }
+}
