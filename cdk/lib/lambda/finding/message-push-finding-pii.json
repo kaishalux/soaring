@@ -17,7 +17,7 @@
   "SchemaVersion": "2018-10-08",
   "Severity": {
     "Label": "MEDIUM",
-    "Original": 1
+    "Original": "1"
   },
   "Title": "Attempted AWSAPICall on S3object, containing multiple types of sensitive information (PII Data)",
   "Types": [
@@ -28,7 +28,7 @@
     "soaring/ProviderName": "soaring",
     "soaring/ProviderVersion": "v1-0",
     "soaring/SeverityMatches": "Is Sensitive Access (User out of operating zone)",
-    "soaring/ShouldAlert": true,
+    "soaring/ShouldAlert": "true",
     "soaring/UserName": "lambda-soaring-dev/Jas",
     "soaring/UserType": "AssumedRole",
     "soaring/UserIP": "220.233.193.97",

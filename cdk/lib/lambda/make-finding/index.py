@@ -292,7 +292,7 @@ def lambda_handler (event, __context):
             "ProviderName"      : product_name,
             "ProviderVersion"   : product_version,
             "soaring/SeverityMatches"   : severity_matches,
-            "soaring/ShouldAlert"       : should_alert,
+            "soaring/ShouldAlert"       : str(should_alert),
             "soaring/UserName"          : user_name,
             "soaring/UserType"          : user_type,
             "soaring/UserIP"            : ip_address,

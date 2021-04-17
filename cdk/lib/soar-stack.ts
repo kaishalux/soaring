@@ -165,9 +165,13 @@ export class SoarStack extends cdk.Stack {
 		pushFindingLambda.addToRolePolicy(
 			new PolicyStatement({
 				effect: Effect.ALLOW,
-				actions: ["securityhub:BatchImportFindings"],
+				actions: [
+					"securityhub:BatchImportFindings",
+					"secretsmanager:GetSecretValue"
+				],
 				resources: [
 					"arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default",
+					"*"
 				],
 			})
 		);
