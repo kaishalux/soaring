@@ -196,7 +196,7 @@ export class SoarStack extends cdk.Stack {
 					"securityhub:BatchUpdateFindings"
 				],
 				resources: [
-					"arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default",
+					"arn:aws:securityhub:ap-southeast-2:659855141795:hub/default"
 				],
 			})
 		);

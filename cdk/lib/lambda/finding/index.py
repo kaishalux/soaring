@@ -50,7 +50,7 @@ def formatSlackMessage(finding):
 
 	severity = finding["Severity"]["Label"]
 
-	id = finding["id"]
+	id = finding["Id"]
 
 	title = finding['Title'] + " [" + severity + "]"
 

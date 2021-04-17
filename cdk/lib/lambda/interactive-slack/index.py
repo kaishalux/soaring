@@ -10,34 +10,41 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 import urllib.parse
 sechub = boto3.client('securityhub')
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 
 def lambda_handler(event, context):
 	#if the user selected a severity
-	if event["actions"][0]["type"] == "static_select":
-		findingID = event["actions"][0]["action_id"].split("|",1)[1]
-		severity = event["actions"][0]["value"]
-		findingUpdate = makeFindingUpdate(findingID, severity)
-		response = sechub.batch_update_findings(findingUpdate)
+	payload = event["body"]
+	temp = urllib.parse.unquote_plus(payload)
+	temp = temp.split("=",1)[1]
+	slackJson = json.loads(temp)
+	logger.info(slackJson["actions"])
+	if slackJson["actions"][0]["type"] == "static_select":
+		response = updateFinding(slackJson)
+		logger.info(response)
+		response = {"statusCode" : response["ResponseMetadata"]["HTTPStatusCode"]}
 	#if they clicked a button
 	else:
 		response = {"statusCode": 200}
 	return response
 
-
-def makeFindingUpdate(id, severity):
-	return {
-		"FindingIdentifiers": [ 
-			{ 
-				"Id": id,
-				"ProductArn": "arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default"
-			}
+def updateFinding(json):
+	findingID = json["actions"][0]["action_id"].split("|",1)[1]
+	severityLabel = json["actions"][0]["selected_option"]["value"]
+	response = sechub.batch_update_findings(
+		FindingIdentifiers=[
+			{
+				'Id': findingID,
+				'ProductArn': 'arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default'
+			},
 		],
-		"Severity": { 
-			"Label": severity
+		Severity={
+			'Label': severityLabel
 		}
-	}
-
-
+	)
+	return response
 	 
 def sendReq(url, string):
 	#get slack json and send message
