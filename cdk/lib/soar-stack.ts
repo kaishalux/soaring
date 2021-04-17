@@ -7,6 +7,7 @@ import * as lambda from "@aws-cdk/aws-lambda";
 import * as nodeLambda from "@aws-cdk/aws-lambda-nodejs";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
 import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
+import * as apigw from '@aws-cdk/aws-apigateway';
 import * as cdk from "@aws-cdk/core";
 import { Duration, Tags } from "@aws-cdk/core";
 import * as path from "path";
@@ -172,6 +173,30 @@ export class SoarStack extends cdk.Stack {
 				resources: [
 					"arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default",
 					"*"
+				],
+			})
+		);
+
+		const interactiveSlackLambda = new lambda.Function(this, 'InteractiveSlackLambda', {
+			code: lambda.Code.fromAsset(path.join(__dirname, "lambda/interactive-slack")),
+			runtime: lambda.Runtime.PYTHON_3_8,    // execution environment
+			memorySize: 512,
+			handler: 'index.lambda_handler'        // file is "hello", function is "handler"
+		});
+		
+			// defines an API Gateway REST API resource backed by our "hello" function.
+		new apigw.LambdaRestApi(this, 'Endpoint', {
+			handler: interactiveSlackLambda
+		});
+
+		interactiveSlackLambda.addToRolePolicy(
+			new PolicyStatement({
+				effect: Effect.ALLOW,
+				actions: [
+					"securityhub:BatchUpdateFindings"
+				],
+				resources: [
+					"arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default",
 				],
 			})
 		);

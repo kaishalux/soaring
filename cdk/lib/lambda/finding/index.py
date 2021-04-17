@@ -50,6 +50,8 @@ def formatSlackMessage(finding):
 
 	severity = finding["Severity"]["Label"]
 
+	id = finding["id"]
+
 	title = finding['Title'] + " [" + severity + "]"
 
 	#set url for finding in security hub (need to double parse ID for URL as Amazon does)
@@ -207,7 +209,7 @@ def formatSlackMessage(finding):
 									}
 
 								],
-								"action_id": "severity_select-action"
+								"action_id": "severity_select-action|"+id
 							}
 						]
 					}
