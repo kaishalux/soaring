@@ -7,6 +7,7 @@ import logging
 from base64 import b64decode
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
+import urllib.parse
 
 
 # The base-64 encoded, encrypted key (CiphertextBlob) stored in the kmsEncryptedHookUrl environment variable
@@ -29,84 +30,22 @@ logger.setLevel(logging.INFO)
 sechub = boto3.client('securityhub')
 
 def lambda_handler(event, context):
+	#push finding to security hub
     finding = makeSecurityHubFinding(event.copy())
     response = sechub.batch_import_findings(Findings = [finding])
-    finding['ProductFields'] = event['ProductFields']
-    sendSlack(finding)
-    return 
+	#push finding to slack if secops should be alerted
+	if (finding["soaring/ShouldAlert"]): sendSlack(finding)
+    return response
 
 def makeSecurityHubFinding(event):
-
-    event['GeneratorId'] = "soaring"
-    event['ProductArn'] = "arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default"
-    event['Region'] = ""
-    del event['Region']
-    event['Severity']['Original'] = str(event['Severity']['Original']) 
-    event['Severity']['Label'] = event['Severity']['Label'].upper()
+	# set unique ID and update time 
     event['UpdatedAt'] = datetime.datetime.now().isoformat() + "Z"
     event['Id'] = event['Id'] + " " + event['UpdatedAt']
-    
-    i = 0
-    while i < len(event['Resources']):
-        #have this make and then delete a key to stop me from deleting a key that doesnt exist
-        event['Resources'][i]['Name'] = ""
-        del event['Resources'][i]['Name']
-        i = i + 1
-    
-    event['ProductFields'] = { 
-            "UserIdentity": json.dumps(event['ProductFields']['UserIdentity']),
-            "Username": json.dumps(event['ProductFields']['UserIdentity']['userName']),
-            "ProviderName": json.dumps(event['ProductFields']['ProviderName']), 
-            "ProviderVersion": json.dumps(event['ProductFields']['ProviderVersion'])
-    }
-
-    # event['Note'] = ""
-    # del event['Note']
-    
     return event
      
-def sendSlack(event):
-
-    user = event['ProductFields']['UserIdentity'].copy()
-    long_description = event['ProductFields']['LongDescription']
-    account_region  = event['ProductFields']['BucketInfo']['accountRegion']
-    bucket_name     = event['ProductFields']['BucketInfo']['bucketName']
-    bucket_url      = f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
-    object_key      = event['ProductFields']['BucketInfo']['s3Object']['key']
-    object_url      = f"https://s3.console.aws.amazon.com/s3/objects/{bucket_name}?region={account_region}&prefix={object_key}"
-
-    text = "%s \n\n*Resources Affected:*\n S3 Bucket: <%s|%s>\n S3 Object: <%s|%s>\n\n*User:* %s \n*User Type:* %s \n*IP:* %s \n*Location:* <%s|%s, %s>" \
-        % (long_description, bucket_url, bucket_name, object_url, object_key, user['userName'], user['userType'], user['userIP'], user['userMap'], user['userCity'], user['userCountry'])
-    
-    slack_message = {
-        'channel': SLACK_CHANNEL,
-        'text': text,
-    	"blocks": [
-    		{
-    			"type": "header",
-    			"text": {
-    				"type": "plain_text",
-    				"text": event['Title'] + " [" + event['Severity']['Label'] + "]",
-    			}
-    		},
-    		{
-    			"type": "section",
-    			"text": {
-    				"type": "mrkdwn",
-    				"text": text
-    			}
-    		},
-    		{
-    			"type": "image",
-    			"title": {
-    				"type": "plain_text",
-    				"text": "%s, %s" % (user['userCity'], user['userCountry']),
-    			},
-    			"image_url": user['userMap'],
-    			"alt_text": "IP Location"
-    		}
-    	]
-    }
+def sendSlack(finding):
+	#get slack json and send message
+	slack_message = formatSlackMessage(finding)
     req = Request(HOOK_URL, json.dumps(slack_message).encode('utf-8'))
     try:
         response = urlopen(req)
@@ -117,3 +56,179 @@ def sendSlack(event):
     except URLError as e:
         logger.error("Server connection failed: %s", e.reason)
     return
+
+def formatSlackMessage(finding):
+	description = finding['Description']
+
+	severity = finding["Severity"]["Label"]
+
+	title = finding['Title'] + " [" + severity + "]"
+
+	#set url for finding in security hub (need to double parse ID for URL as Amazon does)
+	sechubUrl = "https://ap-southeast-2.console.aws.amazon.com/securityhub/home?region=ap-southeast-2#/findings?search=Id%3D%255Coperator%255C%253AEQUALS%255C%253A"
+	sechubUrl = sechubUrl + urllib.parse.quote(urllib.parse.quote(finding["Id"], safe=''))
+
+	#resources
+	resources = ""
+	for res in finding["Resources"]:
+		resources = f"{resources}{res["Type"]}:{res["Id"]} "
+
+	#user
+	user = finding["ProductFields"]["soaring/UserName"]
+
+	#location
+	location = f"{finding["ProductFields"]["soaring/UserCity"]}, {finding["ProductFields"]["soaring/UserCountry"]}"
+
+    # text = "%s \n\n*Resources Affected:*\n S3 Bucket: <%s|%s>\n S3 Object: <%s|%s>\n\n*User:* %s \n*User Type:* %s \n*IP:* %s \n*Location:* <%s|%s, %s>" \
+    #     % (description, bucket_url, bucket_name, object_url, object_key, user['userName'], user['userType'], user['userIP'], user['userMap'], user['userCity'], user['userCountry'])
+    
+
+	#set colour for message based on severity
+	colour = "ff0000" #red
+	if severity == "INFORMATIONAL": colour = "009dff" #blue
+	if severity == "LOW": colour = "d834eb" #purple
+	if severity == "MEDIUM": colour = "fff200" #yellow
+	if severity == "HIGH": colour = "ed9600" #orange
+	if severity == "CRITICAL": colour = "ff0000" #red
+	
+    slack = {
+        "channel": SLACK_CHANNEL,
+		"text": title, 	#set notification text of message
+    	"blocks": [
+    		{
+    			"type": "header", 
+    			"text": {
+    				"type": "plain_text", 
+    				"text": title 	#set heading
+    			}
+    		}
+    	],
+    	"attachments": [
+    		{
+    			"color": colour, # colour for message
+    			"blocks": [
+					{
+						"type": "section",
+						"text": {
+							"type": "mrkdwn",
+							"text": description 	#set description in message
+						}
+					},
+    				{
+    					"type": "section",
+    					"fields": [
+    						{
+    							"type": "mrkdwn",
+    							"text": "*Severity*"
+    						},
+    						{
+    							"type": "mrkdwn",
+    							"text": severity	#set severity
+    						},
+    						{
+    							"type": "mrkdwn",
+    							"text": "*Resources*"
+    						},
+    						{
+    							"type": "mrkdwn",
+    							"text": resources	#set resources
+    						},
+    						{
+    							"type": "mrkdwn",
+    							"text": "*User*"
+    						},
+    						{
+    							"type": "mrkdwn",
+    							"text": user 		#set user
+    						},
+    						{
+    							"type": "mrkdwn",
+    							"text": "*User Location*"
+    						},
+    						{
+    							"type": "mrkdwn",
+    							"text": location 	#set location
+    						}
+    					]
+    				},
+    				{
+    					"type": "actions",
+    					"elements": [
+    						{
+    							"type": "button",
+    							"text": {
+    								"type": "plain_text",
+    								"text": "Security Hub Finding",
+    							},
+    							"url": sechubUrl 	#set url for button that leads to finding in sec hub console
+    						},
+    					]
+    				},
+    				{
+    					"type": "actions",
+    					"elements": [
+    						{
+    							"type": "static_select",
+    							"placeholder": {
+    								"type": "plain_text",
+    								"text": "Change the severity",
+    							},
+    							"options": [
+    								{
+    									"text": {
+    										"type": "plain_text",
+    										"text": "INFORMATIONAL",
+    									},
+    									"value": "INFORMATIONAL"
+    								},
+    								{
+    									"text": {
+    										"type": "plain_text",
+    										"text": "LOW",
+    									},
+    									"value": "LOW"
+    								},
+    								{
+    									"text": {
+    										"type": "plain_text",
+    										"text": "MEDIUM",
+    									},
+    									"value": "MEDIUM"
+    								},
+									{
+    									"text": {
+    										"type": "plain_text",
+    										"text": "HIGH",
+    									},
+    									"value": "HIGH"
+    								},
+    								{
+    									"text": {
+    										"type": "plain_text",
+    										"text": "CRITICAL",
+    									},
+    									"value": "CRITICAL"
+    								}
+
+    							],
+    							"action_id": "severity_select-action"
+    						}
+    					]
+    				}
+    			]
+    		}
+    	]
+    }
+
+		#add extra button link to macie finding if there is one   
+	if "soaring/MacieFindingUrl" in finding["ProductFields"]:
+		macieBtn = {
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "Macie Finding",
+					},
+					"url": finding["ProductFields"]["soaring/MacieFindingUrl"]
+				}
+		slack["attachments"][0]["blocks"][2]["elements"].append(macieBtn)
+	return slack 

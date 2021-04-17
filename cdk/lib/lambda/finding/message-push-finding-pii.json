@@ -1,0 +1,50 @@
+{
+  "AwsAccountId": "659855141795",
+  "CreatedAt": "2021-04-15T11:48:50.232923Z",
+  "Description": "There was an attempted AWSAPICall on your secure S3 resources (2 resources are affected). Sensitive PII data stored in the S3 bucket [soaring-1-customer-reports, soaring-1-customer-reports.xlsx] may have been compromised.",
+  "FirstObservedAt": "2021-04-15T11:38:31Z",
+  "GeneratorId": "aws-s3-2a74962a-b18d-9773-3b8b-de03d996460c",
+  "Id": "ap-southeast-2/659855141795/08fb6a3c-7b47-4f63-8fd9-1a476e706e0d",
+  "ProductArn": "arn:aws:securityhub:ap-southeast-2:659855141795:product/659855141795/default",
+  "Resources": [
+    {
+      "Type": "AwsS3Bucket",
+      "Id": "arn:aws:s3:::soaring-1-customer-reports",
+      "Partition": "aws",
+      "Region": "ap-southeast-2"
+    }
+  ],
+  "SchemaVersion": "2018-10-08",
+  "Severity": {
+    "Label": "MEDIUM",
+    "Original": 1
+  },
+  "Title": "Attempted AWSAPICall on S3object, containing multiple types of sensitive information (PII Data)",
+  "Types": [
+    "Sensitive Data Identifications/PII"
+  ],
+  "UpdatedAt": "2021-04-15T11:48:50.232910Z",
+  "ProductFields": {
+    "soaring/ProviderName": "soaring",
+    "soaring/ProviderVersion": "v1-0",
+    "soaring/SeverityMatches": "Is Sensitive Access (User out of operating zone)",
+    "soaring/ShouldAlert": true,
+    "soaring/UserName": "lambda-soaring-dev/Jas",
+    "soaring/UserType": "AssumedRole",
+    "soaring/UserIP": "220.233.193.97",
+    "soaring/UserCity": "Sydney",
+    "soaring/UserCountry": "Australia",
+    "soaring/UserCoords": "117.29999923706055",
+    "soaring/UserMap": "https://maps.googleapis.com/maps/api/staticmap?center=-33.88100051879883,151.18099975585938&zoom=9&size=600x400&scale=1&markers=-33.88100051879883,151.18099975585938&key=AIzaSyA6mPDpj5h6x4MWi842vsLdEWqIYKHKE8A",
+    "soaring/UserGroups": "AllUsers",
+    "soaring/UserGroupPolicies": "IAMUserChangePassword, IAMReadOnlyAccess, IAMUserSSHKeys, assume-role, iam-mfa-permissions",
+    "soaring/UserPolicies": "",
+    "soaring/UserRolePolicies": "soaring-dev-policy",
+    "soaring/MacieFindingId": "a0c2e07e381f830a8c15fe1502579d09",
+    "soaring/MacieFindingUrl": "https://ap-southeast-2.console.aws.amazon.com/macie/home?region=ap-southeast-2#findings?itemId=a0c2e07e381f830a8c15fe1502579d09",
+    "soaring/MacieTitle": "The S3 object contains multiple types of sensitive information.",
+    "soaring/S3Object": "soaring-1-customer-reports.xlsx",
+    "soaring/S3ObjectEtag": "6d32478c16608fa31995336305284b85",
+    "soaring/S3BucketPermission": "NOT_PUBLIC"
+  }
+}
