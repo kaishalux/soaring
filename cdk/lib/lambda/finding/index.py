@@ -10,25 +10,11 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 import urllib.parse
 
-
-# # The base-64 encoded, encrypted key (CiphertextBlob) stored in the kmsEncryptedHookUrl environment variable
-# ENCRYPTED_HOOK_URL = "hooks.slack.com/services/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" #os.environ['kmsEncryptedHookUrl']
-# # The Slack channel to send a message to stored in the slackChannel environment variable
-# SLACK_CHANNEL = "9447 sec-alert" #os.environ['slackChannel']
-
-# """ Have to get KMS key permissions first
-# HOOK_URL = "https://" + boto3.client('kms').decrypt(
-# 	CiphertextBlob=b64decode(ENCRYPTED_HOOK_URL),
-# 	EncryptionContext={'LambdaFunctionName': os.environ['AWS_LAMBDA_FUNCTION_NAME']}
-# )['Plaintext'].decode('utf-8')
-# """
-
-# for now store hook unencrypted
-# HOOK_URL = "https://" + ENCRYPTED_HOOK_URL
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
 sechub = boto3.client('securityhub')
+SLACK_CHANNEL = "9447 sec-alert" 
+SECRET_NAME = "prod/Soaring/slackHook"
 
 def lambda_handler(event, context):
 	#push finding to security hub
@@ -47,7 +33,7 @@ def makeSecurityHubFinding(event):
 def sendSlack(finding):
 	#get slack json and send message
 	slack_message = formatSlackMessage(finding)
-	hook_url = get_secret().decode('utf-8')
+	hook_url = "https://" + json.loads(get_secret())[SECRET_NAME]
 	req = Request(hook_url, json.dumps(slack_message).encode('utf-8'))
 	try:
 		response = urlopen(req)
@@ -73,7 +59,7 @@ def formatSlackMessage(finding):
 	#resources involved
 	resources = ""
 	for res in finding["Resources"]:
-		resources = resources + res["Type"] + " : " + res["Id"] + " \n"
+		resources = resources + res["Type"] + " - " + res["Id"] + " \n"
 
 	#user
 	user = finding["ProductFields"]["soaring/UserName"]
@@ -245,7 +231,6 @@ def formatSlackMessage(finding):
 
 def get_secret():
 
-    secret_name = "slack-hook-url"
     region_name = "ap-southeast-2"
 
     # Create a Secrets Manager client
@@ -261,7 +246,7 @@ def get_secret():
 
     try:
         get_secret_value_response = client.get_secret_value(
-            SecretId=secret_name
+            SecretId=SECRET_NAME
         )
     except ClientError as e:
         if e.response['Error']['Code'] == 'DecryptionFailureException':
