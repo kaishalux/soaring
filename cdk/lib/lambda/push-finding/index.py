@@ -19,10 +19,10 @@ SECRET_NAME = "prod/Soaring/slackHook"
 def lambda_handler(event, context):
 	#push finding to security hub
 	finding = makeSecurityHubFinding(event.copy())
-	response = sechub.batch_import_findings(Findings = [finding])
+	#response = sechub.batch_import_findings(Findings = [finding])
 	#push finding to slack if secops should be alerted
-	if (finding["ProductFields"]["soaring/ShouldAlert"] == "True"): sendSlack(finding)
-	return response
+	if (finding["ProductFields"]["soaring/ShouldAlert"] == "True"): return sendSlack(finding)
+	return #response
 
 def makeSecurityHubFinding(event):
 	# set unique ID and update time 
@@ -50,49 +50,55 @@ def formatSlackMessage(finding):
 
 	severity 		= finding["Severity"]["Label"]
 	severity_info 	= finding["ProductFields"]["soaring/SeverityMatches"]
-	severity_text 	= f"{severity} - ({severity_info})"
+	severity_text 	= f"{severity} - {severity_info}"
 
 	id = finding["Id"]
 
 	title = finding['Title'] + " [" + severity + "]"
-	first_observed_at = finding['FirstObservedAt']
 
 	#set url for finding in security hub (need to double parse ID for URL as Amazon does)
 	sechubUrl = "https://ap-southeast-2.console.aws.amazon.com/securityhub/home?region=ap-southeast-2#/findings?search=Id%3D%255Coperator%255C%253AEQUALS%255C%253A"
 	sechubUrl = sechubUrl + urllib.parse.quote(urllib.parse.quote(finding["Id"], safe=''))
 
 	#resources involved
-	resources = ""
+	resources		= ""
+	
 	for res in finding["Resources"]:
 		if (res["Type"] == "AwsS3Bucket"): resource_type = "S3 Bucket"
-		resources = resources + resource_type + " - " + res["Id"] + " \n"
+		res_name  = res["Id"].split(":")[-1]
+		resources = resources + res_name + " (" + resource_type + ")\n"
 
 	#user
-	username 	= finding["ProductFields"]["soaring/UserName"]
-	usertype 	= finding["ProductFields"]["soaring/UserType"]
-	user 		= f"{username} ({usertype})" 
+	username 		= finding["ProductFields"]["soaring/UserName"]
+	usertype 		= finding["ProductFields"]["soaring/UserType"]
+	user 			= f"{usertype} - {username}" 
 
 	#location
-	location_text = finding["ProductFields"]["soaring/UserCity"] + ", " \
+	location_text	= finding["ProductFields"]["soaring/UserCity"] + " " \
 		+ finding["ProductFields"]["soaring/UserRegion"] + ", " \
 		+ finding["ProductFields"]["soaring/UserCountry"]
 
-	location_map = finding["ProductFields"]["soaring/UserMap"]
+	location_map	= finding["ProductFields"]["soaring/UserMap"]
 
-	location = f"<{location_map}|{location_text}>"
+	location		= f"<{location_map}|{location_text}>"
 
 	#threat types
 	threat = ""
 	for thr in finding["Types"]:
 		threat = thr + "\n"	
-
+		
+	#first observed at
+	event_time_iso		= str(finding["FirstObservedAt"].replace("Z","+00:00"))
+	event_time_dt		= datetime.datetime.fromisoformat(event_time_iso)
+	first_observed_at	= "*First observed at:* " + event_time_dt.strftime("%Y-%m-%d %H:%M:%S")
+	
 	#set colour for message based on severity
 	colour = "ff0000" #red
 	if severity == "INFORMATIONAL": colour = "009dff" #blue
-	if severity == "LOW": colour = "d834eb" #purple
-	if severity == "MEDIUM": colour = "fff200" #yellow
-	if severity == "HIGH": colour = "ed9600" #orange
-	if severity == "CRITICAL": colour = "ff0000" #red
+	if severity == "LOW":			colour = "d834eb" #purple
+	if severity == "MEDIUM":		colour = "fff200" #yellow
+	if severity == "HIGH":			colour = "ed9600" #orange
+	if severity == "CRITICAL":		colour = "ff0000" #red
 	
 	slack = {
 		"channel": SLACK_CHANNEL,
@@ -126,8 +132,9 @@ def formatSlackMessage(finding):
 							},
 							{
 								"type": "mrkdwn",
-								"text": severity	#set severity
-							},							{
+								"text": severity_text	#set severity
+							},							
+							{
 								"type": "mrkdwn",
 								"text": "*Threat Type*"
 							},
@@ -158,16 +165,15 @@ def formatSlackMessage(finding):
 							{
 								"type": "mrkdwn",
 								"text": location 	#set location
-							},
-							{
-								"type": "mrkdwn",
-								"text": "*First Observed At*"
-							},
-							{
-								"type": "mrkdwn",
-								"text": first_observed_at 	# last observed timestamp
 							}
 						]
+					},
+					{
+						"type": "section",
+						"text": {
+							"type": "mrkdwn",
+							"text": first_observed_at 	#set description in message
+						}
 					},
 					{
 						"type": "actions",
