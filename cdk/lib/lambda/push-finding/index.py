@@ -48,11 +48,14 @@ def sendSlack(finding):
 def formatSlackMessage(finding):
 	description = finding['Description']
 
-	severity = finding["Severity"]["Label"]
+	severity 		= finding["Severity"]["Label"]
+	severity_info 	= finding["ProductFields"]["soaring/SeverityMatches"]
+	severity_text 	= f"{severity} - ({severity_info})"
 
 	id = finding["Id"]
 
 	title = finding['Title'] + " [" + severity + "]"
+	first_observed_at = finding['FirstObservedAt']
 
 	#set url for finding in security hub (need to double parse ID for URL as Amazon does)
 	sechubUrl = "https://ap-southeast-2.console.aws.amazon.com/securityhub/home?region=ap-southeast-2#/findings?search=Id%3D%255Coperator%255C%253AEQUALS%255C%253A"
@@ -61,13 +64,18 @@ def formatSlackMessage(finding):
 	#resources involved
 	resources = ""
 	for res in finding["Resources"]:
-		resources = resources + res["Type"] + " - " + res["Id"] + " \n"
+		if (res["Type"] == "AwsS3Bucket"): resource_type = "S3 Bucket"
+		resources = resources + resource_type + " - " + res["Id"] + " \n"
 
 	#user
-	user = finding["ProductFields"]["soaring/UserName"]
+	username 	= finding["ProductFields"]["soaring/UserName"]
+	usertype 	= finding["ProductFields"]["soaring/UserType"]
+	user 		= f"{username} ({usertype})" 
 
 	#location
-	location = finding["ProductFields"]["soaring/UserCity"] +", "+ finding["ProductFields"]["soaring/UserCountry"]
+	location = finding["ProductFields"]["soaring/UserCity"] + ", " \
+		+ finding["ProductFields"]["soaring/UserRegion"] + ", " \
+		+ finding["ProductFields"]["soaring/UserCountry"]
 
 	#threat types
 	threat = ""
@@ -146,6 +154,14 @@ def formatSlackMessage(finding):
 							{
 								"type": "mrkdwn",
 								"text": location 	#set location
+							},
+							{
+								"type": "mrkdwn",
+								"text": "*First Observed At*"
+							},
+							{
+								"type": "mrkdwn",
+								"text": first_observed_at 	# last observed timestamp
 							}
 						]
 					},
