@@ -90,7 +90,7 @@ def formatSlackMessage(finding):
 	#first observed at
 	event_time_iso		= str(finding["FirstObservedAt"].replace("Z","+00:00"))
 	event_time_dt		= datetime.datetime.fromisoformat(event_time_iso)
-	first_observed_at	= "*First observed at:* " + event_time_dt.strftime("%Y-%m-%d %H:%M:%S")
+	first_observed_at	= "*First observed at:* " + event_time_dt.strftime("%Y-%m-%d %H:%M:%S (%Z)")
 	
 	#set colour for message based on severity
 	colour = "ff0000" #red
@@ -254,7 +254,7 @@ def formatSlackMessage(finding):
 					},
 					"url": finding["ProductFields"]["soaring/MacieFindingUrl"]
 				}
-		slack["attachments"][0]["blocks"][2]["elements"].append(macieBtn)
+		slack["attachments"][0]["blocks"][3]["elements"].append(macieBtn)
 	return slack 
 
 def get_secret():
