@@ -16,7 +16,7 @@ export function getSeverity(name, event, severity) {
 export function getNamedSeverity(severity) {
   return (
     Object.keys(severities).find((key) => severity <= severities[key]) ||
-    "CATASTROPHIC"
+    "CRITICAL"
   );
 }
 
