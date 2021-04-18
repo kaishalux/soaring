@@ -73,9 +73,13 @@ def formatSlackMessage(finding):
 	user 		= f"{username} ({usertype})" 
 
 	#location
-	location = finding["ProductFields"]["soaring/UserCity"] + ", " \
+	location_text = finding["ProductFields"]["soaring/UserCity"] + ", " \
 		+ finding["ProductFields"]["soaring/UserRegion"] + ", " \
 		+ finding["ProductFields"]["soaring/UserCountry"]
+
+	location_map = finding["ProductFields"]["soaring/UserMap"]
+
+	location = f"<{location_map}|{location_text}>"
 
 	#threat types
 	threat = ""
