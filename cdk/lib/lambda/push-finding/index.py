@@ -17,12 +17,13 @@ SLACK_CHANNEL = "9447 sec-alert"
 SECRET_NAME = "prod/Soaring/slackHook"
 
 def lambda_handler(event, context):
-	#push finding to security hub
+	# push finding to security hub
 	finding = makeSecurityHubFinding(event.copy())
-	#response = sechub.batch_import_findings(Findings = [finding])
-	#push finding to slack if secops should be alerted
-	if (finding["ProductFields"]["soaring/ShouldAlert"] == "True"): return sendSlack(finding)
-	return #response
+	response = sechub.batch_import_findings(Findings = [finding])
+	
+	# push finding to slack if secops should be alerted
+	if (finding["ProductFields"]["soaring/ShouldAlert"] == "True"): sendSlack(finding)
+	return response
 
 def makeSecurityHubFinding(event):
 	# set unique ID and update time 
