@@ -17,10 +17,11 @@ SLACK_CHANNEL = "9447 sec-alert"
 SECRET_NAME = "prod/Soaring/slackHook"
 
 def lambda_handler(event, context):
-	#push finding to security hub
+	# push finding to security hub
 	finding = makeSecurityHubFinding(event.copy())
 	response = sechub.batch_import_findings(Findings = [finding])
-	#push finding to slack if secops should be alerted
+	
+	# push finding to slack if secops should be alerted
 	if (finding["ProductFields"]["soaring/ShouldAlert"] == "True"): sendSlack(finding)
 	return response
 
@@ -48,7 +49,9 @@ def sendSlack(finding):
 def formatSlackMessage(finding):
 	description = finding['Description']
 
-	severity = finding["Severity"]["Label"]
+	severity 		= finding["Severity"]["Label"]
+	severity_info 	= finding["ProductFields"]["soaring/SeverityMatches"]
+	severity_text 	= f"{severity} - {severity_info}"
 
 	id = finding["Id"]
 
@@ -59,28 +62,44 @@ def formatSlackMessage(finding):
 	sechubUrl = sechubUrl + urllib.parse.quote(urllib.parse.quote(finding["Id"], safe=''))
 
 	#resources involved
-	resources = ""
+	resources		= ""
+	
 	for res in finding["Resources"]:
-		resources = resources + res["Type"] + " - " + res["Id"] + " \n"
+		if (res["Type"] == "AwsS3Bucket"): resource_type = "S3 Bucket"
+		res_name  = res["Id"].split(":")[-1]
+		resources = resources + res_name + " (" + resource_type + ")\n"
 
 	#user
-	user = finding["ProductFields"]["soaring/UserName"]
+	username 		= finding["ProductFields"]["soaring/UserName"]
+	usertype 		= finding["ProductFields"]["soaring/UserType"]
+	user 			= f"{usertype} - {username}" 
 
 	#location
-	location = finding["ProductFields"]["soaring/UserCity"] +", "+ finding["ProductFields"]["soaring/UserCountry"]
+	location_text	= finding["ProductFields"]["soaring/UserCity"] + " " \
+		+ finding["ProductFields"]["soaring/UserRegion"] + ", " \
+		+ finding["ProductFields"]["soaring/UserCountry"]
+
+	location_map	= finding["ProductFields"]["soaring/UserMap"]
+
+	location		= f"<{location_map}|{location_text}>"
 
 	#threat types
 	threat = ""
 	for thr in finding["Types"]:
 		threat = thr + "\n"	
-
+		
+	#first observed at
+	event_time_iso		= str(finding["FirstObservedAt"].replace("Z","+00:00"))
+	event_time_dt		= datetime.datetime.fromisoformat(event_time_iso)
+	first_observed_at	= "*First observed at:* " + event_time_dt.strftime("%Y-%m-%d %H:%M:%S (%Z)")
+	
 	#set colour for message based on severity
 	colour = "ff0000" #red
 	if severity == "INFORMATIONAL": colour = "009dff" #blue
-	if severity == "LOW": colour = "d834eb" #purple
-	if severity == "MEDIUM": colour = "fff200" #yellow
-	if severity == "HIGH": colour = "ed9600" #orange
-	if severity == "CRITICAL": colour = "ff0000" #red
+	if severity == "LOW":			colour = "d834eb" #purple
+	if severity == "MEDIUM":		colour = "fff200" #yellow
+	if severity == "HIGH":			colour = "ed9600" #orange
+	if severity == "CRITICAL":		colour = "ff0000" #red
 	
 	slack = {
 		"channel": SLACK_CHANNEL,
@@ -114,8 +133,9 @@ def formatSlackMessage(finding):
 							},
 							{
 								"type": "mrkdwn",
-								"text": severity	#set severity
-							},							{
+								"text": severity_text	#set severity
+							},							
+							{
 								"type": "mrkdwn",
 								"text": "*Threat Type*"
 							},
@@ -148,6 +168,13 @@ def formatSlackMessage(finding):
 								"text": location 	#set location
 							}
 						]
+					},
+					{
+						"type": "section",
+						"text": {
+							"type": "mrkdwn",
+							"text": first_observed_at 	#set description in message
+						}
 					},
 					{
 						"type": "actions",
@@ -228,7 +255,7 @@ def formatSlackMessage(finding):
 					},
 					"url": finding["ProductFields"]["soaring/MacieFindingUrl"]
 				}
-		slack["attachments"][0]["blocks"][2]["elements"].append(macieBtn)
+		slack["attachments"][0]["blocks"][3]["elements"].append(macieBtn)
 	return slack 
 
 def get_secret():

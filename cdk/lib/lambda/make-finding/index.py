@@ -254,6 +254,7 @@ def lambda_handler (event, __context):
 
     ip_address  = ip_details['ip']
     ip_country  = ip_details['country_name']
+    ip_region   = ip_details['region_code']
     ip_city     = ip_details['city']
     ip_lat      = ip_details['latitude']
     ip_long     = ip_details['longitude']
@@ -289,14 +290,15 @@ def lambda_handler (event, __context):
         "Types"             : finding_types,
         "UpdatedAt"         : updated_at,
         "ProductFields": {
-            "ProviderName"      : product_name,
-            "ProviderVersion"   : product_version,
+            "ProviderName"              : product_name,
+            "ProviderVersion"           : product_version,
             "soaring/SeverityMatches"   : severity_matches,
             "soaring/ShouldAlert"       : str(should_alert),
             "soaring/UserName"          : user_name,
             "soaring/UserType"          : user_type,
             "soaring/UserIP"            : ip_address,
             "soaring/UserCity"          : ip_city,
+            "soaring/UserRegion"        : ip_region,
             "soaring/UserCountry"       : ip_country,
             "soaring/UserCoords"        : str(ip_lat + ip_long),
             "soaring/UserMap"           : map_url,
