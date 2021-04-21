@@ -92,6 +92,7 @@ def lambda_handler (event, __context):
     detail          = combined_event['detail']
     event_id        = detail['eventID']
     action_type     = detail['eventType']
+    event_name      = detail['eventName']
 
     if (action_type == "AwsApiCall"): 
         action_type = "AWSAPICall"
@@ -181,15 +182,12 @@ def lambda_handler (event, __context):
         macie_finding       = combined_event['macieFinding']
         macie_finding_id    = combined_event['macieJobs']['findingIds'][0]
         macie_finding_url   = f"https://{account_region}.console.aws.amazon.com/macie/home?region={account_region}#findings?itemId={macie_finding_id}"
+        macie_title         = macie_finding['title']
         
         # PII specific metadata
         classification_details  = macie_finding['classificationDetails']
         data_classification     = classification_details['result']
         data_class_types        = len(data_classification['sensitiveData'])
-
-        object_etag     = macie_finding['resourcesAffected']['s3Object']['eTag']
-        object_key      = macie_finding['resourcesAffected']['s3Object']['key']
-        macie_title     = macie_finding['title']
 
         ## Object metadata from Macie finding
         for resource_key in macie_finding['resourcesAffected']:
@@ -198,7 +196,12 @@ def lambda_handler (event, __context):
         
             # If resource is an S3 bucket, check public/non public acccess
             if (resource_key == "s3Bucket"): 
-                bucket_permission = resource_details['publicAccess']['effectivePermission']
+                if (resource_details['defaultServerSideEncryption']):
+                    bucket_encryption = resource_details['defaultServerSideEncryption']['encryptionType']
+                else:
+                    bucket_encryption = "User Managed"
+                
+                bucket_permission = resource_details['publicAccess']['effectivePermission'].replace("_", " ").title()
                 rname = resource_details['name']
             
             # If resource is an S3 object, get name
@@ -212,40 +215,32 @@ def lambda_handler (event, __context):
 
     ## Generate event description based on event type and contexts
     ## include info about resources + PII data
-    n_resources     = len(resource_list_sensitive + resource_list_canary)
-    descriptions    = []
     finding_types   = []
-
-    if (n_resources == 1):
-        event_description_type    = f"There was an attempted {action_type} on your secure S3 resources ({str(n_resources)} resource is affected)."
-    else:
-        event_description_type    = f"There was an attempted {action_type} on your secure S3 resources ({str(n_resources)} resources are affected)."
-    descriptions.append(event_description_type)
-
-    ## Build title from 
-    title = f"Attempted {action_type} on S3"
+    description     = ""
+    
+    ## Build title from event metadata
+    title = f"S3 Bucket Accessed"
 
     if (soaring_event_type == "PII"):
         
-        if (data_class_types > 1):
-            title = title + " object, containing multiple types of sensitive information (PII Data)"
-        else:
-            title = title + " object, containing sensitive information (PII Data)"
+        title = title + " (Sensitive PII Data)"
 
-        sensitive_list_str      = ", ".join(resource_list_sensitive)
-        event_desc_sensitive    = f"Sensitive PII data stored in the S3 bucket [{sensitive_list_str}] may have been compromised."
-        descriptions.append(event_desc_sensitive)
+        if (data_class_types > 1):
+            description = f"There was a {event_name} call on the S3 bucket '{bucket_name}'. Multiple types of sensitive PII data were identified in the bucket."
+        else:
+            description = f"There was a {event_name} call on the S3 bucket '{bucket_name}'. Sensitive PII data was identified in the bucket."
+
+        resource_list_str      = ",".join(resource_list_sensitive)
         finding_types.append("Sensitive Data Identifications/PII")
 
     elif (soaring_event_type == "CANARY"):
 
-        canary_list_str     = ", ".join(resource_list_canary)
-        event_desc_canary   = f"One or more canaries [{canary_list_str}] may have been compromised."
-        descriptions.append(event_desc_canary)
-        finding_types.append("TTPs/Initial Access")
-        title = title + " bucket (Canary Bucket)"
+        title = title + " (Canary)"
+        description = f"There was a {event_name} call on the S3 canary bucket '{bucket_name}'. Other S3 resources may be at risk of compromise."
 
-    description = " ".join(descriptions)
+        resource_list_str     = ",".join(resource_list_canary)
+        finding_types.append("TTPs/Initial Access")
+
 
     
 
@@ -305,7 +300,10 @@ def lambda_handler (event, __context):
             "soaring/UserGroups"        : user_groups,
             "soaring/UserGroupPolicies" : user_group_policies,
             "soaring/UserPolicies"      : user_policies,
-            "soaring/UserRolePolicies"  : role_policies
+            "soaring/UserRolePolicies"  : role_policies,
+            "soaring/ResourceList"      : resource_list_str,
+            "soaring/BucketName"        : bucket_name,
+            "soaring/AccountRegion"     : account_region
         }
     }
 
@@ -315,8 +313,7 @@ def lambda_handler (event, __context):
         finding['ProductFields']['soaring/MacieFindingId']  = macie_finding_id
         finding['ProductFields']['soaring/MacieFindingUrl'] = macie_finding_url
         finding['ProductFields']['soaring/MacieTitle']      = macie_title
-        finding['ProductFields']['soaring/S3Object']        = object_key
-        finding['ProductFields']['soaring/S3ObjectEtag']    = object_etag
         finding['ProductFields']['soaring/S3BucketPermission'] = bucket_permission
+        finding['ProductFields']['soaring/S3BucketEncryption'] = bucket_encryption
 
     return finding
