@@ -92,6 +92,7 @@ def lambda_handler (event, __context):
     detail          = combined_event['detail']
     event_id        = detail['eventID']
     action_type     = detail['eventType']
+    event_name      = detail['eventName']
 
     if (action_type == "AwsApiCall"): 
         action_type = "AWSAPICall"
@@ -198,6 +199,11 @@ def lambda_handler (event, __context):
         
             # If resource is an S3 bucket, check public/non public acccess
             if (resource_key == "s3Bucket"): 
+                if (resource_details['defaultServerSideEncryption']):
+                    bucket_encryption = resource_details['defaultServerSideEncryption']['encryptionType']
+                else:
+                    bucket_encryption = "User Managed"
+                
                 bucket_permission = resource_details['publicAccess']['effectivePermission']
                 rname = resource_details['name']
             
@@ -217,30 +223,30 @@ def lambda_handler (event, __context):
     finding_types   = []
 
     if (n_resources == 1):
-        event_description_type    = f"There was an attempted {action_type} on your secure S3 resources ({str(n_resources)} resource is affected)."
+        event_description_type    = f"There was an {action_type} on your secure S3 resources ({str(n_resources)} resource is affected)."
     else:
-        event_description_type    = f"There was an attempted {action_type} on your secure S3 resources ({str(n_resources)} resources are affected)."
+        event_description_type    = f"There was an {action_type} on your secure S3 resources ({str(n_resources)} resources are affected)."
     descriptions.append(event_description_type)
 
     ## Build title from 
-    title = f"Attempted {action_type} on S3"
+    title = f"Attempted {event_name} on S3"
 
     if (soaring_event_type == "PII"):
         
         if (data_class_types > 1):
-            title = title + " object, containing multiple types of sensitive information (PII Data)"
+            title = title + " bucket (multiple types of sensitive data - PII)"
         else:
-            title = title + " object, containing sensitive information (PII Data)"
+            title = title + " bucket (sensitive data - PII)"
 
-        sensitive_list_str      = ", ".join(resource_list_sensitive)
-        event_desc_sensitive    = f"Sensitive PII data stored in the S3 bucket [{sensitive_list_str}] may have been compromised."
+        resource_list_str      = ",".join(resource_list_sensitive)
+        event_desc_sensitive    = f"Sensitive PII data stored in the S3 bucket [{bucket_name}] was compromised."
         descriptions.append(event_desc_sensitive)
         finding_types.append("Sensitive Data Identifications/PII")
 
     elif (soaring_event_type == "CANARY"):
 
-        canary_list_str     = ", ".join(resource_list_canary)
-        event_desc_canary   = f"One or more canaries [{canary_list_str}] may have been compromised."
+        resource_list_str     = ",".join(resource_list_canary)
+        event_desc_canary   = f"The canary bucket [{bucket_name}] was compromised."
         descriptions.append(event_desc_canary)
         finding_types.append("TTPs/Initial Access")
         title = title + " bucket (Canary Bucket)"
@@ -305,7 +311,10 @@ def lambda_handler (event, __context):
             "soaring/UserGroups"        : user_groups,
             "soaring/UserGroupPolicies" : user_group_policies,
             "soaring/UserPolicies"      : user_policies,
-            "soaring/UserRolePolicies"  : role_policies
+            "soaring/UserRolePolicies"  : role_policies,
+            "soaring/ResourceList"      : resource_list_str,
+            "soaring/BucketName"        : bucket_name,
+            "soaring/AccountRegion"     : account_region
         }
     }
 
@@ -315,8 +324,7 @@ def lambda_handler (event, __context):
         finding['ProductFields']['soaring/MacieFindingId']  = macie_finding_id
         finding['ProductFields']['soaring/MacieFindingUrl'] = macie_finding_url
         finding['ProductFields']['soaring/MacieTitle']      = macie_title
-        finding['ProductFields']['soaring/S3Object']        = object_key
-        finding['ProductFields']['soaring/S3ObjectEtag']    = object_etag
         finding['ProductFields']['soaring/S3BucketPermission'] = bucket_permission
+        finding['ProductFields']['soaring/S3BucketEncryption'] = bucket_encryption
 
     return finding
