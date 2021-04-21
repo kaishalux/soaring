@@ -40,7 +40,7 @@ export class TargetStack extends cdk.Stack {
       destinationBucket: bucketTargetCanary
     });
 
-    // 1. Demo of a bucket which holds PII or sensitive information
+    // 3. Demo of a bucket which doesn't hold any PII or sensitive information
     const bucketTargetControl = new s3.Bucket(this, "ControlBucket", {
       encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
@@ -52,6 +52,20 @@ export class TargetStack extends cdk.Stack {
     new s3deploy.BucketDeployment(this, 'DeployFiles3', {
       sources: [s3deploy.Source.asset(path.join(__dirname, "s3/soaring-3-internal-files"))],       
       destinationBucket: bucketTargetControl
+    });
+
+    // 4. Demo of a bucket which accidentally holds any PII or sensitive information
+    const bucketTargetNonPii = new s3.Bucket(this, "EmployeeReports", {
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      bucketName: "soaring-4-employee-profiles",
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true
+    });
+
+    new s3deploy.BucketDeployment(this, 'DeployFiles4', {
+      sources: [s3deploy.Source.asset(path.join(__dirname, "s3/soaring-4-employee-profiles"))],       
+      destinationBucket: bucketTargetNonPii
     });
 
     Tags.of(this).add("OWNER", "team");

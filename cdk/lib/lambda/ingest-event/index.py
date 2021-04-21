@@ -9,7 +9,7 @@ def lambda_handler(event, _context):
     ## event.soaringEventType   = CANARY, PII, OTHER
     ##      if CANARY:  skip Macie job
     ##      if PII:     run Macie job
-    ##      if OTHER:   exit at EventTypeChoice (basically, if not CANARY event and not ListObjects)
+    ##      if OTHER:   exit at EventTypeChoice
 
     ## event.soaringBucketType  = CANARY, PII, OTHER
     ## determines severity classifications
@@ -40,14 +40,9 @@ def lambda_handler(event, _context):
             soaring_bucket_type = "CANARY"
         elif (tag['Key'] == "SensitiveDataClassification" and tag['Value'] == "PII"):
             soaring_bucket_type = "PII"
-
-
+    
     if (soaring_bucket_type != "CANARY" and event_name == "ListObjects"):
         soaring_event_type = "OTHER"
-
-    print("Event name: " + event_name)
-    print("Event type: " + soaring_event_type)
-    print("Bucket type: " + soaring_bucket_type)
 
     ## return modified event containing event type
     ingested_event['soaringEventType']      = soaring_event_type
