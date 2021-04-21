@@ -210,6 +210,10 @@ export class SoarStack extends cdk.Stack {
 		});
 
 		const eventTypeChoice = new sfn.Choice(this, "EventTypeChoice");
+		const eventTypeFail   = new sfn.Fail(this, "EventTypeFail", {
+			error: 'WorkflowFailure',
+			cause: "Event type does not match conditions for step function"
+		})
         const canaryPass = new sfn.Pass(this, "CanaryPassStep");
 
 		const macieJob = new tasks.LambdaInvoke(this, "MacieJobStep", {
@@ -306,6 +310,7 @@ export class SoarStack extends cdk.Stack {
                     ),
                     canaryPass
                 )
+				.otherwise(eventTypeFail)
 				.afterwards()
 			)
             .next(getIdentity)
