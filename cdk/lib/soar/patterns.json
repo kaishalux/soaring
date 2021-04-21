@@ -22,11 +22,7 @@
             "eventName": [
                 "ListObjects",
                 "PutObject",
-                "GetObject",
-                "HeadObject",
-                "RestoreObject",
-                "DeleteObject",
-                "DeleteObjects"
+                "GetObject"
             ]
         }
     }
