@@ -182,15 +182,12 @@ def lambda_handler (event, __context):
         macie_finding       = combined_event['macieFinding']
         macie_finding_id    = combined_event['macieJobs']['findingIds'][0]
         macie_finding_url   = f"https://{account_region}.console.aws.amazon.com/macie/home?region={account_region}#findings?itemId={macie_finding_id}"
+        macie_title         = macie_finding['title']
         
         # PII specific metadata
         classification_details  = macie_finding['classificationDetails']
         data_classification     = classification_details['result']
         data_class_types        = len(data_classification['sensitiveData'])
-
-        object_etag     = macie_finding['resourcesAffected']['s3Object']['eTag']
-        object_key      = macie_finding['resourcesAffected']['s3Object']['key']
-        macie_title     = macie_finding['title']
 
         ## Object metadata from Macie finding
         for resource_key in macie_finding['resourcesAffected']:
@@ -204,7 +201,7 @@ def lambda_handler (event, __context):
                 else:
                     bucket_encryption = "User Managed"
                 
-                bucket_permission = resource_details['publicAccess']['effectivePermission']
+                bucket_permission = resource_details['publicAccess']['effectivePermission'].replace("_", " ").title()
                 rname = resource_details['name']
             
             # If resource is an S3 object, get name
@@ -218,40 +215,32 @@ def lambda_handler (event, __context):
 
     ## Generate event description based on event type and contexts
     ## include info about resources + PII data
-    n_resources     = len(resource_list_sensitive + resource_list_canary)
-    descriptions    = []
     finding_types   = []
-
-    if (n_resources == 1):
-        event_description_type    = f"There was an {action_type} on your secure S3 resources ({str(n_resources)} resource is affected)."
-    else:
-        event_description_type    = f"There was an {action_type} on your secure S3 resources ({str(n_resources)} resources are affected)."
-    descriptions.append(event_description_type)
-
-    ## Build title from 
-    title = f"Attempted {event_name} on S3"
+    description     = ""
+    
+    ## Build title from event metadata
+    title = f"S3 Bucket Accessed"
 
     if (soaring_event_type == "PII"):
         
+        title = title + " (Sensitive PII Data)"
+
         if (data_class_types > 1):
-            title = title + " bucket (multiple types of sensitive data - PII)"
+            description = f"There was a {event_name} call on the S3 bucket '{bucket_name}'. Multiple types of sensitive PII data were identified in the bucket."
         else:
-            title = title + " bucket (sensitive data - PII)"
+            description = f"There was a {event_name} call on the S3 bucket '{bucket_name}'. Sensitive PII data was identified in the bucket."
 
         resource_list_str      = ",".join(resource_list_sensitive)
-        event_desc_sensitive    = f"Sensitive PII data stored in the S3 bucket [{bucket_name}] was compromised."
-        descriptions.append(event_desc_sensitive)
         finding_types.append("Sensitive Data Identifications/PII")
 
     elif (soaring_event_type == "CANARY"):
 
-        resource_list_str     = ",".join(resource_list_canary)
-        event_desc_canary   = f"The canary bucket [{bucket_name}] was compromised."
-        descriptions.append(event_desc_canary)
-        finding_types.append("TTPs/Initial Access")
-        title = title + " bucket (Canary Bucket)"
+        title = title + " (Canary)"
+        description = f"There was a {event_name} call on the S3 canary bucket '{bucket_name}'. Other S3 resources may be at risk of compromise."
 
-    description = " ".join(descriptions)
+        resource_list_str     = ",".join(resource_list_canary)
+        finding_types.append("TTPs/Initial Access")
+
 
     
 
