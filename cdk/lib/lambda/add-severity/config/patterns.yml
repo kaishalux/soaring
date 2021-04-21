@@ -25,3 +25,9 @@ patterns:
     pattern:
       type: matches
       value: CANARY
+  is_not_pii_bucket:
+    description: Bucket Not Tagged for PII
+    path: $.soaringBucketType
+    pattern:
+      type: matches
+      value: OTHER
