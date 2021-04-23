@@ -34,7 +34,7 @@ def lambda_handler(event, _context):
     for page in page_iterator:
         findings_list = page['findingIds']
         findings = macie_client.get_findings(findingIds=findings_list)
-
+        
         ## save finding ids to cloud event
         cloud_event['macieJobs']['findingIds'] = findings_list
     

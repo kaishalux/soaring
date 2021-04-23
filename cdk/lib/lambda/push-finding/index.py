@@ -63,11 +63,19 @@ def formatSlackMessage(finding):
 
 	#resources involved
 	resources		= ""
+	bucket_name 	= finding["ProductFields"]['soaring/BucketName']
+	acc_region 		= finding["ProductFields"]['soaring/AccountRegion']
 	
-	for res in finding["Resources"]:
-		if (res["Type"] == "AwsS3Bucket"): resource_type = "S3 Bucket"
-		res_name  = res["Id"].split(":")[-1]
-		resources = resources + res_name + " (" + resource_type + ")\n"
+	for res in list(finding["ProductFields"]['soaring/ResourceList'].split(",")):
+
+		if (res == bucket_name):
+			resource_type 	= "S3 Bucket"
+			res_url 		= f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}?region={acc_region}"
+		else:
+			resource_type 	= "S3 Object"
+			res_url 		= f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}?region={acc_region}&prefix={res}"
+
+		resources = f"{resources}<{res_url}|{res}> ({resource_type})\n"
 
 	#user
 	username 		= finding["ProductFields"]["soaring/UserName"]
@@ -89,9 +97,12 @@ def formatSlackMessage(finding):
 		threat = thr + "\n"	
 		
 	#first observed at
-	event_time_iso		= str(finding["FirstObservedAt"].replace("Z","+00:00"))
-	event_time_dt		= datetime.datetime.fromisoformat(event_time_iso)
-	first_observed_at	= "*First observed at:* " + event_time_dt.strftime("%Y-%m-%d %H:%M:%S (%Z)")
+	first_observed_time_iso	= str(finding["FirstObservedAt"].replace("Z","+00:00"))
+	first_observed_time_dt	= datetime.datetime.fromisoformat(first_observed_time_iso)
+	first_observed_at		= first_observed_time_dt.strftime("%Y-%m-%d %H:%M:%S (%Z)")
+	last_updated_time_iso	= str(finding["UpdatedAt"].replace("Z","+00:00"))
+	last_updated_time_dt	= datetime.datetime.fromisoformat(last_updated_time_iso)
+	last_updated_at			= last_updated_time_dt.strftime("%Y-%m-%d %H:%M:%S (%Z)")
 	
 	#set colour for message based on severity
 	colour = "ff0000" #red
@@ -150,10 +161,15 @@ def formatSlackMessage(finding):
 							{
 								"type": "mrkdwn",
 								"text": resources	#set resources
-							},
+							}
+						]
+					},
+					{
+						"type": "section",
+						"fields": [
 							{
 								"type": "mrkdwn",
-								"text": "*User*"
+								"text": "*User Identity*"
 							},
 							{
 								"type": "mrkdwn",
@@ -166,15 +182,24 @@ def formatSlackMessage(finding):
 							{
 								"type": "mrkdwn",
 								"text": location 	#set location
+							},
+							{
+								"type": "mrkdwn",
+								"text": "*First observed at*"
+							},
+							{
+								"type": "mrkdwn",
+								"text": first_observed_at 	
+							},
+							{
+								"type": "mrkdwn",
+								"text": "*Last updated at*"
+							},
+							{
+								"type": "mrkdwn",
+								"text": last_updated_at 	
 							}
-						]
-					},
-					{
-						"type": "section",
-						"text": {
-							"type": "mrkdwn",
-							"text": first_observed_at 	#set description in message
-						}
+						]		
 					},
 					{
 						"type": "actions",
@@ -247,6 +272,30 @@ def formatSlackMessage(finding):
 
 		#add extra button link to macie finding if there is one   
 	if "soaring/MacieFindingUrl" in finding["ProductFields"]:
+		bucket_permission = finding['ProductFields']['soaring/S3BucketPermission']
+		bucket_encryption = finding['ProductFields']['soaring/S3BucketEncryption']
+
+		bucket_info = [
+			{
+				"type": "mrkdwn",
+				"text": "*Bucket Access*"
+			},
+			{
+				"type": "mrkdwn",
+				"text": bucket_permission
+			},
+			{
+				"type": "mrkdwn",
+				"text": "*Bucket Encryption*"
+			},
+			{
+				"type": "mrkdwn",
+				"text": bucket_encryption
+			}
+		]
+
+		slack["attachments"][0]["blocks"][1]["fields"] += bucket_info
+
 		macieBtn = {
 					"type": "button",
 					"text": {
