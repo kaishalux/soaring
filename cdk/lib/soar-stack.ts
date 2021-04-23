@@ -322,7 +322,7 @@ export class SoarStack extends cdk.Stack {
 		// Set up rest of infrastructure
 		const stateMachine = new sfn.StateMachine(this, "SoaringSoln", {
 			stateMachineName: "soar-stack",
-			stateMachineType: sfn.StateMachineType.STANDARD,
+			stateMachineType: sfn.StateMachineType.EXPRESS,
 			definition: sfnDefinition,
 		});
 
