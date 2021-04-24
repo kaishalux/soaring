@@ -115,7 +115,7 @@ npm test
 
 ## Additional Documentation
 
-Additional documentation including product and solution brainstorm, and timeline is contained in `docs/`.
+Additional documentation including product and solution brainstorm, well-architected review and project timeline is contained in `docs/`.
 
 ## Getting help
 
