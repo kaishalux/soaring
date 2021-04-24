@@ -1,7 +1,7 @@
 {
-  "name": "cdk",
-  "version": "0.1.0",
-  "description": "This is a blank project for TypeScript development with CDK.",
+  "name": "soaring",
+  "version": "1.0.0",
+  "description": "CDK stack for SOARing platform",
   "main": "jest.config.js",
   "bin": {
     "cdk": "cdk.js"
@@ -46,6 +46,8 @@
   "devDependencies": {
     "@types/jest": "^26.0.22",
     "@types/node": "^14.14.37",
-    "esbuild": "^0.11.10"
+    "esbuild": "^0.11.10",
+    "jest": "^26.6.3",
+    "ts-jest": "^26.5.5"
   }
 }

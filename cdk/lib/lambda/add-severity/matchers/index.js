@@ -2,13 +2,13 @@
  * Custom pattern matchers
  * The data passed in is determined by the path
  */
-import cidr from "ip-cidr";
+const cidr = require("ip-cidr");
 
 /**
  * Checks if IP outside of domain range
  * @param {*} data
  */
-export function isOutOfOperatingZone(data) {
+function isOutOfOperatingZone(data) {
   // Domain ranges
   const ranges = [
     new cidr("129.94.0.0/16"),
@@ -18,3 +18,7 @@ export function isOutOfOperatingZone(data) {
 
   return !ranges.some((block) => block.contains(data));
 }
+
+module.exports = {
+  isOutOfOperatingZone,
+};
