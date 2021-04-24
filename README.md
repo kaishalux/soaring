@@ -113,6 +113,10 @@ To run tests run the following command in the `cdk/` directory.
 npm test
 ```
 
+## Additional Documentation
+
+Additional documentation including product and solution brainstorm, and timeline is contained in `docs/`.
+
 ## Getting help
 
 If you have questions, concerns, bug reports, etc, please file an issue in this repository's Issue Tracker.
