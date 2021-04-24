@@ -113,9 +113,9 @@ To run tests run the following command in the `cdk/` directory.
 npm test
 ```
 
-## Additional Documentation
+## Project Documentation
 
-Additional documentation including product and solution brainstorm, well-architected review and project timeline is contained in `docs/`.
+Additional documentation about this project, including product and solution brainstorm, an AWS Well-Architected Review and project timeline is contained in `docs/`.
 
 ## Getting help
 
