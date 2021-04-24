@@ -28,9 +28,26 @@ This project is licensed under the MIT license. See [LICENSE](LICENSE) for the f
 1. Clone this repository.
 1. Open a terminal in `./cdk` and install NPM dependencies using
 
-```bash
-npm install
-```
+   ```bash
+   npm install
+   ```
+
+1. **Pytest doesn't work well without a virtual environment.**
+   Configure and activate a Python virtual environment using
+
+   ```bash
+   python3 -m venv .venv
+   source ./.venv/bin/activate
+   ```
+
+   Note: this command may need to be adjusted if running on a different shell see:
+   https://docs.python.org/3/library/venv.html for environment specific commands.
+
+1. Then again in `./cdk` install Python dependencies using
+
+   ```bash
+   python3 -m pip install -r requirements.txt
+   ```
 
 ---
 
@@ -107,11 +124,37 @@ top_level_pattern_id:
 
 ## Development
 
+Tests use:
+
+- [Pytest](https://pytest.org) for Python tests with [pytest-mock](https://pypi.org/project/pytest-mock/) for mocking
+- [Jest](https://jestjs.io/) for TS/JS tests
+
 To run tests run the following command in the `cdk/` directory.
 
 ```bash
 npm test
 ```
+
+or for just Typescript tests
+
+```bash
+npm run test:js
+```
+
+or for just Python tests
+
+```bash
+npm run test:py
+```
+
+### Writing new tests
+
+Guidelines:
+
+1. Don't test external services if possible. Otherwise use mocks.
+1. Keep tests small and quick.
+
+Tests should be stored in the same directory as the Lambda handler. Use `<testname>.test.ts` format for Typescript tests and `test_<testname>.py` for Python tests. Note `pytest` functions must begin with `test_`. See [Pytest](https://pytest.org) and [Jest](https://jestjs.io/) for for more.
 
 ## Project Documentation
 
