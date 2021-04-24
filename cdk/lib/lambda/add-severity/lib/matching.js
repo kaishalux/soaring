@@ -1,9 +1,12 @@
-import yaml from "js-yaml";
-import jsonpath from "jsonpath";
-import * as matchers from "../matchers";
+const yaml = require("js-yaml");
+const jsonpath = require("jsonpath");
+const matchers = require("../matchers");
 
-import fs from "fs";
-const patternDefinitions = yaml.load(fs.readFileSync("./config/patterns.yml"));
+const fs = require("fs");
+const path = require("path");
+const patternDefinitions = yaml.load(
+  fs.readFileSync(path.join(__dirname, "../config/patterns.yml"))
+);
 
 function matchRegex(patternName, definition, data) {
   if (typeof definition?.pattern?.value !== "string") {
@@ -58,7 +61,7 @@ function getMatcher(patternName, definition, data) {
 }
 
 /** Logic for matching patterns */
-export function matchPattern(event, patternName) {
+function matchPattern(event, patternName) {
   const definition = patternDefinitions.patterns[patternName];
   if (definition?.path === undefined)
     throw new TypeError(`Missing path for ${patternName}`);
@@ -76,3 +79,7 @@ export function matchPattern(event, patternName) {
   const isMatching = getMatcher(patternName, definition, data);
   return isMatching;
 }
+
+module.exports = {
+  matchPattern,
+};

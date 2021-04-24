@@ -1,11 +1,16 @@
-import yaml from "js-yaml";
-import * as severities from "./lib/severities";
+const yaml = require("js-yaml");
+const severities = require("./lib/severities");
 
 // This soft-caches the files in Lambda memory
-import fs from "fs";
-const config = yaml.load(fs.readFileSync("./config/config.yml"));
-const patternDefinitions = yaml.load(fs.readFileSync("./config/patterns.yml"))
-  .patterns;
+const fs = require("fs");
+const path = require("path");
+
+const config = yaml.load(
+  fs.readFileSync(path.join(__dirname, "./config/config.yml"))
+);
+const patternDefinitions = yaml.load(
+  fs.readFileSync(path.join(__dirname, "./config/patterns.yml"))
+).patterns;
 
 const baseline = config.baseline;
 

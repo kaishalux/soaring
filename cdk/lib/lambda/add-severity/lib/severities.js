@@ -1,11 +1,14 @@
-import yaml from "js-yaml";
-import * as matching from "./matching";
+const yaml = require("js-yaml");
+const matching = require("./matching");
 
-import fs from "fs";
-const config = yaml.load(fs.readFileSync("./config/config.yml"));
+const fs = require("fs");
+const path = require("path");
+const config = yaml.load(
+  fs.readFileSync(path.join(__dirname, "../config/config.yml"))
+);
 const severities = config.severity;
 
-export function getSeverity(name, event, severity) {
+function getSeverity(name, event, severity) {
   if (matching.matchPattern(event, name)) {
     return severities[severity];
   }
@@ -13,16 +16,22 @@ export function getSeverity(name, event, severity) {
   return null;
 }
 
-export function getNamedSeverity(severity) {
+function getNamedSeverity(severity) {
   return (
     Object.keys(severities).find((key) => severity <= severities[key]) ||
     "CRITICAL"
   );
 }
 
-export function getDisplaySeverity(severity) {
+function getDisplaySeverity(severity) {
   return {
     description: getNamedSeverity(severity),
     score: severity,
   };
 }
+
+module.exports = {
+  getSeverity,
+  getNamedSeverity,
+  getDisplaySeverity,
+};
