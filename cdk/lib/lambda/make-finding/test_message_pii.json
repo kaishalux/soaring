@@ -1,0 +1,375 @@
+{
+    "version": "0",
+    "id": "ab4bc9d0-f081-1815-36e0-213c85bcf514",
+    "detail-type": "AWS API Call via CloudTrail",
+    "source": "aws.s3",
+    "account": "659855141795",
+    "time": "2021-04-15T08:13:27Z",
+    "region": "ap-southeast-2",
+    "resources": [],
+    "detail": {
+      "eventVersion": "1.08",
+      "userIdentity": {
+        "type": "AssumedRole",
+        "principalId": "AROAZTITONORSWEDWVJJE:Jas",
+        "arn": "arn:aws:sts::659855141795:assumed-role/lambda-soaring-dev/Jas",
+        "accountId": "659855141795",
+        "accessKeyId": "ASIAZTITONOR5WIA5OES",
+        "sessionContext": {
+          "sessionIssuer": {
+            "type": "Role",
+            "principalId": "AROAZTITONORSWEDWVJJE",
+            "arn": "arn:aws:iam::659855141795:role/lambda-soaring-dev",
+            "accountId": "659855141795",
+            "userName": "lambda-soaring-dev"
+          },
+          "attributes": {
+            "creationDate": "2021-04-15T07:16:36Z",
+            "mfaAuthenticated": "true"
+          }
+        }
+      },
+      "eventTime": "2021-04-15T08:13:27Z",
+      "eventSource": "s3.amazonaws.com",
+      "eventName": "ListObjects",
+      "awsRegion": "ap-southeast-2",
+      "sourceIPAddress": "220.233.193.97",
+      "userAgent": "[S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.970 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation]",
+      "requestParameters": {
+        "list-type": "2",
+        "bucketName": "soaring-1-customer-reports",
+        "encoding-type": "url",
+        "max-keys": "1000",
+        "fetch-owner": "true",
+        "prefix": "",
+        "delimiter": "/",
+        "Host": "s3-ap-southeast-2.amazonaws.com"
+      },
+      "responseElements": null,
+      "additionalEventData": {
+        "SignatureVersion": "SigV4",
+        "CipherSuite": "ECDHE-RSA-AES128-GCM-SHA256",
+        "bytesTransferredIn": 0,
+        "AuthenticationMethod": "AuthHeader",
+        "x-amz-id-2": "GzAA4Z/7MCl3lHWe0Ce9MREuBNNHhRjr6wby88kyTkry9Qn67awhBtTOYp5SzLyCAjIKdLpMes4=",
+        "bytesTransferredOut": 664
+      },
+      "requestID": "RFTVEMMBK61HNGJJ",
+      "eventID": "b5855ed0-1169-43b5-8d86-2093dbd90e0d",
+      "readOnly": true,
+      "resources": [
+        {
+          "type": "AWS::S3::Object",
+          "ARNPrefix": "arn:aws:s3:::soaring-1-customer-reports/"
+        },
+        {
+          "accountId": "659855141795",
+          "type": "AWS::S3::Bucket",
+          "ARN": "arn:aws:s3:::soaring-1-customer-reports"
+        }
+      ],
+      "eventType": "AwsApiCall",
+      "managementEvent": false,
+      "recipientAccountId": "659855141795",
+      "vpcEndpointId": "vpce-2df23744",
+      "eventCategory": "Data",
+      "bucketTags": [
+        {
+          "Key": "aws:cloudformation:stack-name",
+          "Value": "TargetStack"
+        },
+        {
+          "Key": "aws:cloudformation:logical-id",
+          "Value": "CustomerReports3579C196"
+        },
+        {
+          "Key": "OWNER",
+          "Value": "team"
+        },
+        {
+          "Key": "SensitiveDataClassification",
+          "Value": "PII"
+        },
+        {
+          "Key": "aws:cloudformation:stack-id",
+          "Value": "arn:aws:cloudformation:ap-southeast-2:659855141795:stack/TargetStack/d9808370-9dbd-11eb-8ced-020356b6c766"
+        }
+      ],
+      "userPolicies": [],
+      "rolePolicies": [
+        {
+          "PolicyName": "soaring-dev-policy",
+          "PolicyArn": "arn:aws:iam::659855141795:policy/soaring-dev-policy"
+        }
+      ],
+      "userGroups": [
+        {
+          "Path": "/",
+          "GroupName": "AllUsers",
+          "GroupId": "AGPAZTITONORSV7SNDEGA",
+          "Arn": "arn:aws:iam::659855141795:group/AllUsers",
+          "CreateDate": "2021-02-28T12:00:21.000Z",
+          "Policies": [
+            {
+              "PolicyName": "IAMUserChangePassword",
+              "PolicyArn": "arn:aws:iam::aws:policy/IAMUserChangePassword"
+            },
+            {
+              "PolicyName": "IAMReadOnlyAccess",
+              "PolicyArn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"
+            },
+            {
+              "PolicyName": "IAMUserSSHKeys",
+              "PolicyArn": "arn:aws:iam::aws:policy/IAMUserSSHKeys"
+            },
+            {
+              "PolicyName": "assume-role",
+              "PolicyArn": "arn:aws:iam::659855141795:policy/assume-role"
+            },
+            {
+              "PolicyName": "iam-mfa-permissions",
+              "PolicyArn": "arn:aws:iam::659855141795:policy/iam-mfa-permissions"
+            }
+          ]
+        }
+      ],
+      "ipDetails": {
+        "ip": "220.233.193.97",
+        "type": "ipv4",
+        "continent_code": "OC",
+        "continent_name": "Oceania",
+        "country_code": "AU",
+        "country_name": "Australia",
+        "region_code": "NSW",
+        "region_name": "New South Wales",
+        "city": "Sydney",
+        "zip": "2037",
+        "latitude": -33.88100051879883,
+        "longitude": 151.18099975585938,
+        "location": {
+          "geoname_id": 2147714,
+          "capital": "Canberra",
+          "languages": [
+            {
+              "code": "en",
+              "name": "English",
+              "native": "English"
+            }
+          ],
+          "country_flag": "http://assets.ipstack.com/flags/au.svg",
+          "country_flag_emoji": "🇦🇺",
+          "country_flag_emoji_unicode": "U+1F1E6 U+1F1FA",
+          "calling_code": "61",
+          "is_eu": false
+        }
+      }
+    },
+    "soaringEventType": "PII",
+    "macieJobs": {
+      "bucketName": "soaring-1-customer-reports",
+      "macieJobArn": "arn:aws:macie2:ap-southeast-2:659855141795:classification-job/c473b606c38b8971c7cad50daa7a7ce6",
+      "macieJobId": "c473b606c38b8971c7cad50daa7a7ce6",
+      "jobStatus": "COMPLETE",
+      "findingIds": [
+        "544bf46e554baec386cf11cf4d6f48b7"
+      ]
+    },
+    "macieFinding": {
+      "accountId": "659855141795",
+      "archived": false,
+      "category": "CLASSIFICATION",
+      "classificationDetails": {
+        "detailedResultsLocation": "s3://[export-config-not-set]/AWSLogs/659855141795/Macie/ap-southeast-2/c473b606c38b8971c7cad50daa7a7ce6/659855141795/c7d2b264-dfdd-3429-940a-dbb1dc257350.jsonl.gz",
+        "jobArn": "arn:aws:macie2:ap-southeast-2:659855141795:classification-job/c473b606c38b8971c7cad50daa7a7ce6",
+        "jobId": "c473b606c38b8971c7cad50daa7a7ce6",
+        "result": {
+          "additionalOccurrences": false,
+          "customDataIdentifiers": {
+            "detections": [],
+            "totalCount": 0
+          },
+          "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "sensitiveData": [
+            {
+              "category": "FINANCIAL_INFORMATION",
+              "detections": [
+                {
+                  "count": 1,
+                  "occurrences": {
+                    "cells": [
+                      {
+                        "cellReference": "A6",
+                        "column": 1,
+                        "row": 6
+                      }
+                    ]
+                  },
+                  "type": "CREDIT_CARD_EXPIRATION"
+                }
+              ],
+              "totalCount": 1
+            },
+            {
+              "category": "PERSONAL_INFORMATION",
+              "detections": [
+                {
+                  "count": 1,
+                  "occurrences": {
+                    "cells": [
+                      {
+                        "cellReference": "A4",
+                        "column": 1,
+                        "row": 4
+                      }
+                    ]
+                  },
+                  "type": "PHONE_NUMBER"
+                },
+                {
+                  "count": 1,
+                  "occurrences": {
+                    "cells": [
+                      {
+                        "cellReference": "A1",
+                        "column": 1,
+                        "row": 1
+                      }
+                    ]
+                  },
+                  "type": "NAME"
+                }
+              ],
+              "totalCount": 2
+            }
+          ],
+          "sizeClassified": 8903,
+          "status": {
+            "code": "COMPLETE"
+          }
+        }
+      },
+      "count": 1,
+      "createdAt": "2021-04-15T08:17:39.726000+00:00Z",
+      "description": "The object contains more than one type of sensitive information.",
+      "id": "544bf46e554baec386cf11cf4d6f48b7",
+      "partition": "aws",
+      "region": "ap-southeast-2",
+      "resourcesAffected": {
+        "s3Bucket": {
+          "arn": "arn:aws:s3:::soaring-1-customer-reports",
+          "createdAt": "2021-04-15T07:41:37+00:00Z",
+          "defaultServerSideEncryption": {
+            "encryptionType": "AES256"
+          },
+          "name": "soaring-1-customer-reports",
+          "owner": {
+            "displayName": "d.latimer",
+            "id": "5bbcff076f8309d1e1f4aa77820b7f0b05925793792e3365267fe296bc1550a6"
+          },
+          "publicAccess": {
+            "effectivePermission": "NOT_PUBLIC",
+            "permissionConfiguration": {
+              "accountLevelPermissions": {
+                "blockPublicAccess": {
+                  "blockPublicAcls": false,
+                  "blockPublicPolicy": false,
+                  "ignorePublicAcls": false,
+                  "restrictPublicBuckets": false
+                }
+              },
+              "bucketLevelPermissions": {
+                "accessControlList": {
+                  "allowsPublicReadAccess": false,
+                  "allowsPublicWriteAccess": false
+                },
+                "blockPublicAccess": {
+                  "blockPublicAcls": true,
+                  "blockPublicPolicy": true,
+                  "ignorePublicAcls": true,
+                  "restrictPublicBuckets": true
+                },
+                "bucketPolicy": {
+                  "allowsPublicReadAccess": false,
+                  "allowsPublicWriteAccess": false
+                }
+              }
+            }
+          },
+          "tags": [
+            {
+              "key": "aws:cloudformation:stack-name",
+              "value": "TargetStack"
+            },
+            {
+              "key": "aws:cloudformation:logical-id",
+              "value": "CustomerReports3579C196"
+            },
+            {
+              "key": "OWNER",
+              "value": "team"
+            },
+            {
+              "key": "SensitiveDataClassification",
+              "value": "PII"
+            },
+            {
+              "key": "aws:cloudformation:stack-id",
+              "value": "arn:aws:cloudformation:ap-southeast-2:659855141795:stack/TargetStack/d9808370-9dbd-11eb-8ced-020356b6c766"
+            }
+          ]
+        },
+        "s3Object": {
+          "bucketArn": "arn:aws:s3:::soaring-1-customer-reports",
+          "eTag": "6d32478c16608fa31995336305284b85",
+          "extension": "xlsx",
+          "key": "soaring-1-customer-reports.xlsx",
+          "lastModified": "2021-04-15T07:42:32+00:00Z",
+          "path": "soaring-1-customer-reports/soaring-1-customer-reports.xlsx",
+          "publicAccess": false,
+          "serverSideEncryption": {
+            "encryptionType": "AES256"
+          },
+          "size": 8903,
+          "storageClass": "STANDARD",
+          "tags": [],
+          "versionId": ""
+        }
+      },
+      "sample": false,
+      "schemaVersion": "1.0",
+      "severity": {
+        "description": "Low",
+        "score": 1
+      },
+      "title": "The S3 object contains multiple types of sensitive information.",
+      "type": "SensitiveData:S3Object/Multiple",
+      "updatedAt": "2021-04-15T08:17:39.726000+00:00Z"
+    },
+    "severity": {
+      "severity": {
+        "description": "MODERATE",
+        "score": 1
+      },
+      "matches": [
+        {
+          "id": "is_sensitive_s3",
+          "description": "Is Sensitive Access",
+          "cofactors": [
+            {
+              "id": "user_not_in_zone",
+              "description": "User out of operating zone",
+              "severity": {
+                "description": "MINOR",
+                "score": 0.5
+              }
+            }
+          ],
+          "severity": {
+            "description": "MODERATE",
+            "score": 1
+          }
+        }
+      ],
+      "shouldAlert": true
+    }
+  }
