@@ -78,18 +78,18 @@ def get_static_map_url(ip_lat, ip_long):
 
 def lambda_handler (event, __context):
 
-    combined_event = event
+    combined_event      = event
     soaring_event_type  = combined_event['soaringEventType']
 
     # Get account information from Macie finding
-    account_id      = combined_event['account']
-    account_region  = combined_event['region']
-    account_source  = combined_event['source']
+    account_id          = combined_event['account']
+    account_region      = combined_event['region']
+    account_source      = combined_event['source']
 
     ## Get basic event attributes
-    detail          = combined_event['detail']
-    event_id        = detail['eventID']
-    event_name      = detail['eventName']
+    detail              = combined_event['detail']
+    event_id            = detail['eventID']
+    event_name          = detail['eventName']
 
     ## Get user identity attributes
     user_identity       = detail['userIdentity']
