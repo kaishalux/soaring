@@ -13,15 +13,8 @@ def lambda_handler(event, _context):
         response = macie_client.describe_classification_job(jobId = job_id)
         event['macieJobs']['jobStatus'] = response['jobStatus']
 
-        # status = response['jobStatus']
-        # if (status == "COMPLETE"):
-        #     print(f'Job {job_id} is complete!')
-        # else:
-        #     print(f'Job {job_id} is not complete: Status is {status}')
-
     except Exception as e:
         print(e)
         return
-    
     
     return event
