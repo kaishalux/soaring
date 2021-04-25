@@ -81,22 +81,15 @@ def lambda_handler (event, __context):
     combined_event = event
     soaring_event_type  = combined_event['soaringEventType']
 
-
     # Get account information from Macie finding
     account_id      = combined_event['account']
     account_region  = combined_event['region']
     account_source  = combined_event['source']
 
-
     ## Get basic event attributes
     detail          = combined_event['detail']
     event_id        = detail['eventID']
-    action_type     = detail['eventType']
     event_name      = detail['eventName']
-
-    if (action_type == "AwsApiCall"): 
-        action_type = "AWSAPICall"
-
 
     ## Get user identity attributes
     user_identity       = detail['userIdentity']
@@ -133,7 +126,6 @@ def lambda_handler (event, __context):
     user_policies       = ", ".join(user_policies_list)
     role_policies       = ", ".join(role_policies_list)
     
-
     # Get severity score 
     severity_desc   = combined_event['severity']['severity']['description']
     severity_score  = combined_event['severity']['severity']['score']
@@ -241,8 +233,6 @@ def lambda_handler (event, __context):
         resource_list_str     = ",".join(resource_list_canary)
         finding_types.append("TTPs/Initial Access")
 
-
-    
 
     ## Get Geo IP details
     ip_details  = detail['ipDetails']
